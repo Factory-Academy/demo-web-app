@@ -1,16 +1,16 @@
-export interface Widget {
+export interface BackupJob {
   id: string
   name: string
-  itemId: string
+  dataSourceId: string
   priority: number
   notes?: string
   createdAt: string
   updatedAt: string
 }
 
-export interface WidgetCreate {
+export interface BackupJobCreate {
   name: string
-  itemId: string
+  dataSourceId: string
   priority?: number
   notes?: string
 }
