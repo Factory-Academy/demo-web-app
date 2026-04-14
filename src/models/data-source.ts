@@ -1,4 +1,4 @@
-export interface Item {
+export interface DataSource {
   id: string
   name: string
   description?: string
@@ -7,7 +7,7 @@ export interface Item {
   updatedAt: string
 }
 
-export interface ItemCreate {
+export interface DataSourceCreate {
   name: string
   description?: string
   status?: string
