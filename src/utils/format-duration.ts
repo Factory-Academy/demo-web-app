@@ -3,7 +3,12 @@
  * Examples: "2d 3h 5m 30s", "45s", "1h 15m"
  */
 export function formatDuration(ms: number): string {
-  const value = Math.abs(ms)
+  // Validate input
+  if (!Number.isFinite(ms)) {
+    throw new Error(`Invalid duration: expected a finite number, got ${ms}`)
+  }
+
+  const value = Math.abs(Math.round(ms))
 
   if (value === 0) return '0s'
 

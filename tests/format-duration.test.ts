@@ -41,8 +41,23 @@ describe('formatDuration', () => {
     expect(formatDuration(259261000)).toBe('3d 1h 1m 1s')
   })
 
-  test('handles milliseconds less than a second', () => {
+  test('throws on NaN', () => {
+    expect(() => formatDuration(NaN)).toThrow('Invalid duration')
+  })
+
+  test('throws on Infinity', () => {
+    expect(() => formatDuration(Infinity)).toThrow('Invalid duration')
+    expect(() => formatDuration(-Infinity)).toThrow('Invalid duration')
+  })
+
+  test('rounds milliseconds less than a second to 0s', () => {
     expect(formatDuration(500)).toBe('0s')
     expect(formatDuration(999)).toBe('0s')
+  })
+
+  test('rounds decimal milliseconds', () => {
+    expect(formatDuration(5500)).toBe('5s')
+    expect(formatDuration(5400)).toBe('5s')
+    expect(formatDuration(64500)).toBe('1m 4s')
   })
 })
