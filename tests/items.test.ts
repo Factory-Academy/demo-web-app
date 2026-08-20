@@ -13,4 +13,9 @@ describe('ItemService', () => {
     const result = service.validate({ name: 'Test', status: 'active' })
     expect(result.valid).toBe(true)
   })
+
+  test('validate accepts urgent status', () => {
+    const result = service.validate({ name: 'Test', status: 'urgent' })
+    expect(result.valid).toBe(true)
+  })
 })
