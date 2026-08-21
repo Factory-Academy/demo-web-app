@@ -2,7 +2,10 @@ import { Item } from '@/models/item'
 
 export class ItemService {
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
+    // Parse createdAt as UTC to avoid timezone-naive comparison issues.
+    // Ensure the date string is treated as UTC by appending 'Z' if not present.
+    const dateString = record.createdAt.endsWith('Z') ? record.createdAt : record.createdAt + 'Z'
+    const ageMs = Date.now() - new Date(dateString).getTime()
     const ageDays = Math.floor(ageMs / 86400000)
     let baseScore = 0
 
