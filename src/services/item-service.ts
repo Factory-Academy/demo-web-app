@@ -23,4 +23,26 @@ export class ItemService {
     }
     return { valid: errors.length === 0, errors }
   }
+
+  formatList(items: Item[], options?: { compact?: boolean }): string {
+    if (items.length === 0) {
+      return 'No items found.'
+    }
+
+    const compact = options?.compact ?? false
+
+    return items
+      .map((item) => {
+        if (compact) {
+          return `${item.name} [${item.status}]`
+        }
+        
+        let formatted = `${item.name} [${item.status}]`
+        if (item.description) {
+          formatted += `\n  ${item.description}`
+        }
+        return formatted
+      })
+      .join('\n')
+  }
 }
