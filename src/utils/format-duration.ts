@@ -1,8 +1,10 @@
 /**
  * Formats a duration in milliseconds to a human-readable string.
  * Examples: "2d 3h 5m 30s", "45s", "1h 15m"
+ * @param ms - Duration in milliseconds
+ * @param compact - If true, shows only the top 2 most significant units
  */
-export function formatDuration(ms: number): string {
+export function formatDuration(ms: number, compact?: boolean): string {
   // Validate input
   if (!Number.isFinite(ms)) {
     throw new Error(`Invalid duration: expected a finite number, got ${ms}`)
@@ -23,6 +25,10 @@ export function formatDuration(ms: number): string {
   if (hours > 0) parts.push(`${hours}h`)
   if (minutes > 0) parts.push(`${minutes}m`)
   if (seconds > 0) parts.push(`${seconds}s`)
+
+  if (compact && parts.length > 2) {
+    return parts.slice(0, 2).join(' ')
+  }
 
   return parts.join(' ')
 }

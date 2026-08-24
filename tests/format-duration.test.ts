@@ -60,4 +60,29 @@ describe('formatDuration', () => {
     expect(formatDuration(5400)).toBe('5s')
     expect(formatDuration(64500)).toBe('1m 4s')
   })
+
+  describe('compact mode', () => {
+    test('shows only top 2 units when compact is true', () => {
+      expect(formatDuration(90061000, true)).toBe('1d 1h')
+      expect(formatDuration(176461000, true)).toBe('2d 1h')
+      expect(formatDuration(259261000, true)).toBe('3d 1h')
+    })
+
+    test('shows all units when less than 3', () => {
+      expect(formatDuration(65000, true)).toBe('1m 5s')
+      expect(formatDuration(3665000, true)).toBe('1h 1m')
+      expect(formatDuration(5000, true)).toBe('5s')
+      expect(formatDuration(60000, true)).toBe('1m')
+    })
+
+    test('works with 4-unit durations', () => {
+      expect(formatDuration(90061000, false)).toBe('1d 1h 1m 1s')
+      expect(formatDuration(90061000, true)).toBe('1d 1h')
+    })
+
+    test('preserves behavior when compact is false or undefined', () => {
+      expect(formatDuration(90061000, false)).toBe('1d 1h 1m 1s')
+      expect(formatDuration(90061000)).toBe('1d 1h 1m 1s')
+    })
+  })
 })
