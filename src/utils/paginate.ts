@@ -10,6 +10,10 @@ export function paginate<T>(items: T[], page: number, pageSize: number): T[] {
     throw new Error('Page and pageSize must be finite numbers')
   }
 
+  if (!Number.isInteger(page) || !Number.isInteger(pageSize)) {
+    throw new Error('Page and pageSize must be integers')
+  }
+
   if (page < 1) {
     throw new Error('Page must be >= 1')
   }
@@ -36,6 +40,22 @@ export function paginate<T>(items: T[], page: number, pageSize: number): T[] {
 export function getPaginationInfo(totalItems: number, page: number, pageSize: number) {
   if (!Number.isFinite(totalItems) || !Number.isFinite(page) || !Number.isFinite(pageSize)) {
     throw new Error('All parameters must be finite numbers')
+  }
+
+  if (!Number.isInteger(totalItems) || !Number.isInteger(page) || !Number.isInteger(pageSize)) {
+    throw new Error('All parameters must be integers')
+  }
+
+  if (totalItems < 0) {
+    throw new Error('TotalItems must be >= 0')
+  }
+
+  if (page < 1) {
+    throw new Error('Page must be >= 1')
+  }
+
+  if (pageSize < 1) {
+    throw new Error('PageSize must be >= 1')
   }
 
   const totalPages = Math.ceil(totalItems / pageSize)

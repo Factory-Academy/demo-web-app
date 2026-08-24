@@ -58,6 +58,16 @@ describe('paginate', () => {
     expect(() => paginate(items, 1, Infinity)).toThrow('Page and pageSize must be finite numbers')
   })
 
+  test('throws error for non-integer page', () => {
+    expect(() => paginate(items, 1.5, 10)).toThrow('Page and pageSize must be integers')
+    expect(() => paginate(items, 2.7, 10)).toThrow('Page and pageSize must be integers')
+  })
+
+  test('throws error for non-integer pageSize', () => {
+    expect(() => paginate(items, 1, 3.5)).toThrow('Page and pageSize must be integers')
+    expect(() => paginate(items, 1, 10.1)).toThrow('Page and pageSize must be integers')
+  })
+
   test('works with different data types', () => {
     const strings = ['a', 'b', 'c', 'd', 'e']
     expect(paginate(strings, 2, 2)).toEqual(['c', 'd'])
@@ -127,5 +137,26 @@ describe('getPaginationInfo', () => {
     expect(() => getPaginationInfo(NaN, 1, 10)).toThrow('All parameters must be finite numbers')
     expect(() => getPaginationInfo(10, Infinity, 10)).toThrow('All parameters must be finite numbers')
     expect(() => getPaginationInfo(10, 1, NaN)).toThrow('All parameters must be finite numbers')
+  })
+
+  test('throws error for non-integer parameters', () => {
+    expect(() => getPaginationInfo(10.5, 1, 10)).toThrow('All parameters must be integers')
+    expect(() => getPaginationInfo(10, 1.5, 10)).toThrow('All parameters must be integers')
+    expect(() => getPaginationInfo(10, 1, 10.5)).toThrow('All parameters must be integers')
+  })
+
+  test('throws error for negative totalItems', () => {
+    expect(() => getPaginationInfo(-1, 1, 10)).toThrow('TotalItems must be >= 0')
+    expect(() => getPaginationInfo(-10, 1, 10)).toThrow('TotalItems must be >= 0')
+  })
+
+  test('throws error for invalid page in getPaginationInfo', () => {
+    expect(() => getPaginationInfo(10, 0, 10)).toThrow('Page must be >= 1')
+    expect(() => getPaginationInfo(10, -1, 10)).toThrow('Page must be >= 1')
+  })
+
+  test('throws error for invalid pageSize in getPaginationInfo', () => {
+    expect(() => getPaginationInfo(10, 1, 0)).toThrow('PageSize must be >= 1')
+    expect(() => getPaginationInfo(10, 1, -1)).toThrow('PageSize must be >= 1')
   })
 })
