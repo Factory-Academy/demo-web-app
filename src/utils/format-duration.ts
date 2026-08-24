@@ -8,14 +8,14 @@ export function formatDuration(ms: number): string {
     throw new Error(`Invalid duration: expected a finite number, got ${ms}`)
   }
 
-  const value = Math.abs(Math.round(ms))
+  const absoluteMs = Math.abs(Math.round(ms))
 
-  if (value === 0) return '0s'
+  if (absoluteMs === 0) return '0s'
 
-  const seconds = Math.floor((value / 1000) % 60)
-  const minutes = Math.floor((value / 60000) % 60)
-  const hours = Math.floor((value / 3600000) % 24)
-  const days = Math.floor(value / 86400000)
+  const seconds = Math.floor((absoluteMs / 1000) % 60)
+  const minutes = Math.floor((absoluteMs / 60000) % 60)
+  const hours = Math.floor((absoluteMs / 3600000) % 24)
+  const days = Math.floor(absoluteMs / 86400000)
 
   const parts: string[] = []
 
