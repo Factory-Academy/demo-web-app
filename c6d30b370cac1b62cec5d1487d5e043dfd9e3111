@@ -1,0 +1,25 @@
+tests/duration.test.ts
+  f726e549695afbc5 1-46
+src/utils/duration.ts
+  f726e549695afbc5 1-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "c6d30b370cac1b62cec5d1487d5e043dfd9e3111",
+  "prompts": {
+    "f726e549695afbc5": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "1d6e1f73-2c78-49c7-974e-6bd1eb65a709",
+        "model": "claude-haiku-4-5-20251001"
+      },
+      "human_author": "academy-eng-3",
+      "messages": [],
+      "total_additions": 73,
+      "total_deletions": 0,
+      "accepted_lines": 73,
+      "overriden_lines": 0
+    }
+  }
+}
