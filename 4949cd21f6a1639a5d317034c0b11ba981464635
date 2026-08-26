@@ -1,0 +1,25 @@
+src/services/item-service.ts
+  c07523967a6e74bc 6-10,13-20,36
+tests/items.test.ts
+  c07523967a6e74bc 18-22,41-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "4949cd21f6a1639a5d317034c0b11ba981464635",
+  "prompts": {
+    "c07523967a6e74bc": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "b08cded5-94e4-4e3f-823d-74b0a55bea5f",
+        "model": "claude-haiku-4-5-20251001"
+      },
+      "human_author": "academy-eng-3",
+      "messages": [],
+      "total_additions": 63,
+      "total_deletions": 2,
+      "accepted_lines": 63,
+      "overriden_lines": 0
+    }
+  }
+}
