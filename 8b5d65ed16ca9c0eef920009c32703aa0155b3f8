@@ -1,0 +1,41 @@
+tests/rate-limiter/keyed-rate-limiter.test.ts
+  82d6f777fbaafd48 1-163
+docs/NOTES.md
+  82d6f777fbaafd48 1-83
+src/lib/rate-limiter/types.ts
+  82d6f777fbaafd48 1-27
+src/lib/rate-limiter/http.ts
+  82d6f777fbaafd48 1-43
+src/lib/rate-limiter/index.ts
+  82d6f777fbaafd48 1-9
+tests/rate-limiter/http.test.ts
+  82d6f777fbaafd48 1-72
+src/lib/rate-limiter/keyed-rate-limiter.ts
+  82d6f777fbaafd48 1-102
+src/lib/rate-limiter/token-bucket.ts
+  82d6f777fbaafd48 1-112
+tests/rate-limiter/token-bucket.test.ts
+  82d6f777fbaafd48 1-224
+src/app/api/items/route.ts
+  82d6f777fbaafd48 3-7,12-20,26-35,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "8b5d65ed16ca9c0eef920009c32703aa0155b3f8",
+  "prompts": {
+    "82d6f777fbaafd48": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "3c8c4ec7-645a-484f-a3fb-4157c22092f6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "academy-eng-1",
+      "messages": [],
+      "total_additions": 866,
+      "total_deletions": 7,
+      "accepted_lines": 860,
+      "overriden_lines": 0
+    }
+  }
+}
