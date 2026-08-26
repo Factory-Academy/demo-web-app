@@ -1,0 +1,25 @@
+src/components/item-list.tsx
+  c6968c4af47f2019 5,8,16,21
+tests/item-list.test.tsx
+  c6968c4af47f2019 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "acf8d5d98f1863cda1135f7c6df8d27738a6c8ec",
+  "prompts": {
+    "c6968c4af47f2019": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "920c4edb-8c2d-4b46-8be1-26398bae4ede",
+        "model": "claude-haiku-4-5-20251001"
+      },
+      "human_author": "academy-eng-3",
+      "messages": [],
+      "total_additions": 52,
+      "total_deletions": 3,
+      "accepted_lines": 52,
+      "overriden_lines": 0
+    }
+  }
+}
