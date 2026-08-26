@@ -1,0 +1,25 @@
+tests/reduce.test.ts
+  0eae3b562968a660 1-38
+src/utils/reduce.ts
+  0eae3b562968a660 1-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "411f62c0ea94831d496ee536994bd7e01287364e",
+  "prompts": {
+    "0eae3b562968a660": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "48065789-68e0-4774-b6ea-57b31bd7a849",
+        "model": "claude-haiku-4-5-20251001"
+      },
+      "human_author": "academy-eng-3",
+      "messages": [],
+      "total_additions": 48,
+      "total_deletions": 0,
+      "accepted_lines": 48,
+      "overriden_lines": 0
+    }
+  }
+}
