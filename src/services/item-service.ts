@@ -1,12 +1,12 @@
 import { Item } from '@/models/item'
 
 export class ItemService {
-  calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
+  calculatePriority(item: Item): 'critical' | 'high' | 'medium' | 'low' {
+    const ageMs = Date.now() - new Date(item.createdAt).getTime()
     const ageDays = Math.floor(ageMs / 86400000)
     let baseScore = 0
 
-    if (record.status === 'urgent') baseScore += 50
+    if (item.status === 'urgent') baseScore += 50
     if (ageDays > 30) baseScore += ageDays * 0.5
 
     if (baseScore >= 80) return 'critical'
@@ -18,7 +18,7 @@ export class ItemService {
   validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
     const errors: string[] = []
     if (!data.name?.trim()) errors.push('Name is required')
-    if (data.status && !['active', 'pending', 'completed'].includes(data.status)) {
+    if (data.status && !['active', 'pending', 'completed', 'urgent'].includes(data.status)) {
       errors.push('Invalid status')
     }
     return { valid: errors.length === 0, errors }
