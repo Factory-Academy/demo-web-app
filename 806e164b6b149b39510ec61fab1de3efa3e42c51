@@ -1,0 +1,23 @@
+src/utils/format-duration.ts
+  9d7cfecdbfdaf8c8 11,13,15-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "806e164b6b149b39510ec61fab1de3efa3e42c51",
+  "prompts": {
+    "9d7cfecdbfdaf8c8": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "4fe11484-88c2-4019-8a07-ea9f744bb183",
+        "model": "claude-sonnet-4-5-20250929"
+      },
+      "human_author": "academy-eng-1",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 6,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}
