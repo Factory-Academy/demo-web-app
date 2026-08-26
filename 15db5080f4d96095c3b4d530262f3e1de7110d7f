@@ -1,0 +1,25 @@
+tests/paginate.test.ts
+  d01937ace7b7c575 1-131
+src/utils/paginate.ts
+  d01937ace7b7c575 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "15db5080f4d96095c3b4d530262f3e1de7110d7f",
+  "prompts": {
+    "d01937ace7b7c575": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "ad1e5864-1012-40c8-b875-8c4823890b9c",
+        "model": "claude-sonnet-4-5-20250929"
+      },
+      "human_author": "academy-eng-1",
+      "messages": [],
+      "total_additions": 184,
+      "total_deletions": 0,
+      "accepted_lines": 184,
+      "overriden_lines": 0
+    }
+  }
+}
