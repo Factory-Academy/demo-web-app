@@ -1,0 +1,25 @@
+src/utils/format-duration.ts
+  303ce48069182aa4 1-23
+tests/format-duration.test.ts
+  303ce48069182aa4 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "c759f06c095af43f069723c2d5e389a99c224a7f",
+  "prompts": {
+    "303ce48069182aa4": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "421f4250-66c5-4fb0-900c-d9f294d18f0d",
+        "model": "claude-haiku-4-5-20251001"
+      },
+      "human_author": "academy-eng-3",
+      "messages": [],
+      "total_additions": 71,
+      "total_deletions": 0,
+      "accepted_lines": 71,
+      "overriden_lines": 0
+    }
+  }
+}
