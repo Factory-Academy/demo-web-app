@@ -105,4 +105,35 @@ describe('debounce', () => {
     jest.advanceTimersByTime(100)
     expect(func2).toHaveBeenCalledTimes(1)
   })
+
+  test('clamps negative wait time to zero', () => {
+    const func = jest.fn()
+    const debounced = debounce(func, -100)
+
+    debounced()
+
+    expect(func).not.toHaveBeenCalled()
+
+    jest.advanceTimersByTime(0)
+    expect(func).toHaveBeenCalledTimes(1)
+  })
+
+  test('handles zero wait time', () => {
+    const func = jest.fn()
+    const debounced = debounce(func, 0)
+
+    debounced()
+
+    expect(func).not.toHaveBeenCalled()
+
+    jest.advanceTimersByTime(0)
+    expect(func).toHaveBeenCalledTimes(1)
+  })
+
+  test('throws TypeError when first argument is not a function', () => {
+    expect(() => debounce(null as any, 100)).toThrow(TypeError)
+    expect(() => debounce(undefined as any, 100)).toThrow(TypeError)
+    expect(() => debounce('not a function' as any, 100)).toThrow(TypeError)
+    expect(() => debounce(42 as any, 100)).toThrow(TypeError)
+  })
 })

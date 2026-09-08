@@ -22,13 +22,18 @@ export type DebouncedFunction<T extends (...args: any[]) => any> = {
  * `wait` milliseconds have elapsed since the last invocation.
  *
  * @param func - The function to debounce
- * @param wait - The number of milliseconds to delay
+ * @param wait - The number of milliseconds to delay (clamped to 0 if negative)
  * @returns A debounced version of the function with a cancel method
  */
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number,
 ): DebouncedFunction<T> {
+  if (typeof func !== 'function') {
+    throw new TypeError('Expected a function')
+  }
+
+  const delay = Math.max(0, wait)
   let timeoutId: ReturnType<typeof setTimeout> | undefined
 
   const debounced = (...args: Parameters<T>): void => {
@@ -37,7 +42,7 @@ export function debounce<T extends (...args: any[]) => any>(
     }
     timeoutId = setTimeout(() => {
       func(...args)
-    }, wait)
+    }, delay)
   }
 
   debounced.cancel = (): void => {
