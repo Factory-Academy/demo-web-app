@@ -1,4 +1,5 @@
 import { Item } from '@/models/item'
+import { FeatureFlagService } from './feature-flags'
 
 /**
  * Service for managing item operations including priority calculation and validation.
@@ -19,8 +20,14 @@ import { Item } from '@/models/item'
  * }
  */
 export class ItemService {
+  private featureFlags: FeatureFlagService
+
+  constructor(featureFlags?: FeatureFlagService) {
+    this.featureFlags = featureFlags ?? new FeatureFlagService()
+  }
   /**
    * Calculates the priority level of an item based on its status and age.
+   * Uses enhanced calculation when FEATURE_FLAG_ENHANCED_PRIORITY is enabled.
    *
    * @param record - The item record to calculate priority for
    * @returns Priority level: 'critical' (score >= 80), 'high' (>= 50), 'medium' (>= 20), or 'low'
@@ -30,6 +37,10 @@ export class ItemService {
    * const priority = service.calculatePriority(item) // Returns 'critical' or 'high'
    */
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
+    if (this.featureFlags.isEnhancedPriorityEnabled()) {
+      return this.calculateEnhancedPriority(record)
+    }
+
     const ageMs = Date.now() - new Date(record.createdAt).getTime()
     const ageDays = Math.floor(ageMs / 86400000)
     let baseScore = 0
@@ -40,6 +51,36 @@ export class ItemService {
     if (baseScore >= 80) return 'critical'
     if (baseScore >= 50) return 'high'
     if (baseScore >= 20) return 'medium'
+    return 'low'
+  }
+
+  /**
+   * Enhanced priority calculation with improved scoring logic.
+   * Used when FEATURE_FLAG_ENHANCED_PRIORITY is enabled.
+   *
+   * @param record - The item record to calculate priority for
+   * @returns Priority level with more nuanced scoring
+   * @private
+   */
+  private calculateEnhancedPriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
+    const ageMs = Date.now() - new Date(record.createdAt).getTime()
+    const ageDays = Math.floor(ageMs / 86400000)
+    let baseScore = 0
+
+    // Enhanced status scoring
+    if (record.status === 'urgent') baseScore += 60
+    else if (record.status === 'pending') baseScore += 30
+    else if (record.status === 'active') baseScore += 20
+
+    // Enhanced age scoring with logarithmic decay
+    if (ageDays > 60) baseScore += 40
+    else if (ageDays > 30) baseScore += 25
+    else if (ageDays > 14) baseScore += 15
+    else if (ageDays > 7) baseScore += 5
+
+    if (baseScore >= 85) return 'critical'
+    if (baseScore >= 55) return 'high'
+    if (baseScore >= 25) return 'medium'
     return 'low'
   }
 
