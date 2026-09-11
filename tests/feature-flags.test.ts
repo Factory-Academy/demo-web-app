@@ -63,6 +63,30 @@ describe('EnvFeatureFlagProvider', () => {
       const provider = new EnvFeatureFlagProvider()
       expect(provider.isEnabled('TEST_FEATURE')).toBe(true)
     })
+
+    test('returns false for empty flagName', () => {
+      process.env.FEATURE_FLAG_TEST_FEATURE = 'true'
+      const provider = new EnvFeatureFlagProvider()
+      expect(provider.isEnabled('')).toBe(false)
+    })
+
+    test('returns false for whitespace-only flagName', () => {
+      process.env.FEATURE_FLAG_TEST_FEATURE = 'true'
+      const provider = new EnvFeatureFlagProvider()
+      expect(provider.isEnabled('   ')).toBe(false)
+    })
+
+    test('returns false for invalid boolean-like values', () => {
+      process.env.FEATURE_FLAG_TEST_FEATURE = 'yes'
+      const provider = new EnvFeatureFlagProvider()
+      expect(provider.isEnabled('TEST_FEATURE')).toBe(false)
+    })
+
+    test('returns false for arbitrary string values', () => {
+      process.env.FEATURE_FLAG_TEST_FEATURE = 'enabled'
+      const provider = new EnvFeatureFlagProvider()
+      expect(provider.isEnabled('TEST_FEATURE')).toBe(false)
+    })
   })
 
   describe('getRolloutPercentage', () => {
@@ -109,6 +133,54 @@ describe('EnvFeatureFlagProvider', () => {
 
     test('returns undefined for empty string', () => {
       process.env.FEATURE_FLAG_TEST_PERCENT = ''
+      const provider = new EnvFeatureFlagProvider()
+      expect(provider.getRolloutPercentage('TEST')).toBeUndefined()
+    })
+
+    test('returns undefined for empty flagName', () => {
+      process.env.FEATURE_FLAG_TEST_PERCENT = '50'
+      const provider = new EnvFeatureFlagProvider()
+      expect(provider.getRolloutPercentage('')).toBeUndefined()
+    })
+
+    test('returns undefined for whitespace-only flagName', () => {
+      process.env.FEATURE_FLAG_TEST_PERCENT = '50'
+      const provider = new EnvFeatureFlagProvider()
+      expect(provider.getRolloutPercentage('   ')).toBeUndefined()
+    })
+
+    test('rounds floating point values to nearest integer', () => {
+      process.env.FEATURE_FLAG_TEST_PERCENT = '42.7'
+      const provider = new EnvFeatureFlagProvider()
+      expect(provider.getRolloutPercentage('TEST')).toBe(43)
+    })
+
+    test('rounds down floating point values below .5', () => {
+      process.env.FEATURE_FLAG_TEST_PERCENT = '42.3'
+      const provider = new EnvFeatureFlagProvider()
+      expect(provider.getRolloutPercentage('TEST')).toBe(42)
+    })
+
+    test('handles exact half values with standard rounding', () => {
+      process.env.FEATURE_FLAG_TEST_PERCENT = '50.5'
+      const provider = new EnvFeatureFlagProvider()
+      expect(provider.getRolloutPercentage('TEST')).toBe(51)
+    })
+
+    test('trims whitespace from percentage values', () => {
+      process.env.FEATURE_FLAG_TEST_PERCENT = '  75  '
+      const provider = new EnvFeatureFlagProvider()
+      expect(provider.getRolloutPercentage('TEST')).toBe(75)
+    })
+
+    test('returns undefined for percentage with invalid characters', () => {
+      process.env.FEATURE_FLAG_TEST_PERCENT = '50%'
+      const provider = new EnvFeatureFlagProvider()
+      expect(provider.getRolloutPercentage('TEST')).toBeUndefined()
+    })
+
+    test('returns undefined for floating point value out of range', () => {
+      process.env.FEATURE_FLAG_TEST_PERCENT = '100.1'
       const provider = new EnvFeatureFlagProvider()
       expect(provider.getRolloutPercentage('TEST')).toBeUndefined()
     })
@@ -182,6 +254,32 @@ describe('FeatureFlagService', () => {
       process.env.FEATURE_FLAG_CUSTOM_FEATURE = 'true'
       const service = new FeatureFlagService()
       expect(service.isEnabled('CUSTOM_FEATURE')).toBe(true)
+    })
+
+    test('isEnabled returns false for empty flagName', () => {
+      const service = new FeatureFlagService()
+      expect(service.isEnabled('')).toBe(false)
+    })
+
+    test('isEnabled returns false for whitespace-only flagName', () => {
+      const service = new FeatureFlagService()
+      expect(service.isEnabled('   ')).toBe(false)
+    })
+
+    test('getRollout returns 0 for empty flagName', () => {
+      const service = new FeatureFlagService()
+      expect(service.getRollout('')).toBe(0)
+    })
+
+    test('getRollout returns 0 for whitespace-only flagName', () => {
+      const service = new FeatureFlagService()
+      expect(service.getRollout('   ')).toBe(0)
+    })
+
+    test('getRollout returns rounded value for floating point percentage', () => {
+      process.env.FEATURE_FLAG_GRADUAL_PERCENT = '33.7'
+      const service = new FeatureFlagService()
+      expect(service.getRollout('GRADUAL')).toBe(34)
     })
   })
 })

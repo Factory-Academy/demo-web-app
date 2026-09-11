@@ -141,9 +141,11 @@ const service = new ItemService()
 
 **Notes**:
 - Values are case-insensitive (`TRUE` = `true`)
-- Whitespace is trimmed
+- Whitespace is trimmed from both boolean and percentage values
 - Invalid or missing values default to `false` or `undefined`
 - Percentage values outside 0-100 return `undefined`
+- Floating-point percentages are rounded to nearest integer (e.g., `42.7` → `43`)
+- Empty or whitespace-only flag names are safely rejected
 
 ## Best Practices
 

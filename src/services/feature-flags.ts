@@ -44,6 +44,10 @@ export class EnvFeatureFlagProvider implements IFeatureFlagProvider {
    * @returns true if enabled, false otherwise
    */
   isEnabled(flagName: string): boolean {
+    if (!flagName || typeof flagName !== 'string' || !flagName.trim()) {
+      return false
+    }
+
     const envKey = `${this.prefix}${flagName}`
     const value = process.env[envKey]
     
@@ -63,6 +67,10 @@ export class EnvFeatureFlagProvider implements IFeatureFlagProvider {
    * @returns Percentage (0-100) or undefined if not set or invalid
    */
   getRolloutPercentage(flagName: string): number | undefined {
+    if (!flagName || typeof flagName !== 'string' || !flagName.trim()) {
+      return undefined
+    }
+
     const envKey = `${this.prefix}${flagName}${this.percentSuffix}`
     const value = process.env[envKey]
 
@@ -70,12 +78,15 @@ export class EnvFeatureFlagProvider implements IFeatureFlagProvider {
       return undefined
     }
 
-    const parsed = parseInt(value, 10)
+    const trimmedValue = value.trim()
+    const parsed = parseFloat(trimmedValue)
+    
     if (isNaN(parsed) || parsed < 0 || parsed > 100) {
       return undefined
     }
 
-    return parsed
+    // Round to nearest integer for consistent percentage handling
+    return Math.round(parsed)
   }
 }
 
@@ -111,9 +122,12 @@ export class FeatureFlagService {
    * Useful for A/B testing or phased rollouts.
    *
    * @param flagName - The feature flag name
-   * @returns Percentage (0-100) or 0 if not set
+   * @returns Percentage (0-100) or 0 if not set or invalid
    */
   getRollout(flagName: string): number {
+    if (!flagName || typeof flagName !== 'string' || !flagName.trim()) {
+      return 0
+    }
     return this.provider.getRolloutPercentage(flagName) ?? 0
   }
 
@@ -124,6 +138,9 @@ export class FeatureFlagService {
    * @returns true if enabled, false otherwise
    */
   isEnabled(flagName: string): boolean {
+    if (!flagName || typeof flagName !== 'string' || !flagName.trim()) {
+      return false
+    }
     return this.provider.isEnabled(flagName)
   }
 }
