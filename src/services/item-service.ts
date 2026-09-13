@@ -1,4 +1,6 @@
 import { Item } from '@/models/item'
+import { IFeatureFlagProvider } from '@/models/feature-flag'
+import { featureFlags } from '@/services/feature-flags'
 
 /**
  * Service for managing item operations including priority calculation and validation.
@@ -19,6 +21,11 @@ import { Item } from '@/models/item'
  * }
  */
 export class ItemService {
+  private readonly flags: IFeatureFlagProvider
+
+  constructor(flags?: IFeatureFlagProvider) {
+    this.flags = flags || featureFlags
+  }
   /**
    * Calculates the priority level of an item based on its status and age.
    *
@@ -45,6 +52,9 @@ export class ItemService {
 
   /**
    * Validates partial item data against business rules.
+   * 
+   * When FEATURE_FLAG_ENHANCED_VALIDATION is enabled, applies additional
+   * validation rules for name length and description content.
    *
    * @param data - Partial item data to validate
    * @returns Validation result with valid flag and array of error messages
@@ -60,10 +70,31 @@ export class ItemService {
    */
   validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
     const errors: string[] = []
-    if (!data.name?.trim()) errors.push('Name is required')
+    
+    // Basic validation
+    if (!data.name?.trim()) {
+      errors.push('Name is required')
+    }
+    
     if (data.status && !['active', 'pending', 'completed'].includes(data.status)) {
       errors.push('Invalid status')
     }
+    
+    // Enhanced validation when feature flag is enabled
+    if (this.flags.isEnabled('enhanced_validation')) {
+      if (data.name && data.name.trim().length < 3) {
+        errors.push('Name must be at least 3 characters')
+      }
+      
+      if (data.name && data.name.length > 100) {
+        errors.push('Name must not exceed 100 characters')
+      }
+      
+      if (data.description && data.description.length > 500) {
+        errors.push('Description must not exceed 500 characters')
+      }
+    }
+    
     return { valid: errors.length === 0, errors }
   }
 }
