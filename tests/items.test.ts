@@ -26,9 +26,80 @@ describe('ItemService', () => {
   describe('calculatePriority', () => {
     test('returns high priority for urgent items', () => {
       const service = new ItemService()
-      const item = { name: 'Task', status: 'urgent' as const, createdAt: new Date() }
+      const item = { 
+        id: '1',
+        name: 'Task', 
+        status: 'urgent', 
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
       const priority = service.calculatePriority(item)
       expect(['high', 'critical']).toContain(priority)
+    })
+
+    test('handles timezone-aware date comparison correctly', () => {
+      const service = new ItemService()
+      const fortyDaysAgo = new Date()
+      fortyDaysAgo.setDate(fortyDaysAgo.getDate() - 40)
+      
+      const item = {
+        id: '2',
+        name: 'Old Task',
+        status: 'urgent',
+        createdAt: fortyDaysAgo.toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      
+      const priority = service.calculatePriority(item)
+      expect(priority).toBe('high') // 50 (urgent) + 20 (40 days * 0.5) = 70
+    })
+
+    test('handles invalid date strings gracefully', () => {
+      const service = new ItemService()
+      const item = {
+        id: '4',
+        name: 'Task',
+        status: 'urgent',
+        createdAt: 'invalid-date',
+        updatedAt: new Date().toISOString()
+      }
+      
+      const priority = service.calculatePriority(item)
+      expect(priority).toBe('low') // Default for invalid dates
+    })
+
+    test('handles future dates by clamping age to zero', () => {
+      const service = new ItemService()
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      
+      const item = {
+        id: '5',
+        name: 'Future Task',
+        status: 'urgent',
+        createdAt: tomorrow.toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      
+      const priority = service.calculatePriority(item)
+      expect(priority).toBe('high') // 50 (urgent) + 0 (future date clamped) = 50
+    })
+
+    test('correctly calculates age for old items', () => {
+      const service = new ItemService()
+      const sixtyDaysAgo = new Date()
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
+      
+      const item = {
+        id: '3',
+        name: 'Very Old Task',
+        status: 'urgent',
+        createdAt: sixtyDaysAgo.toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      
+      const priority = service.calculatePriority(item)
+      expect(priority).toBe('critical') // 50 (urgent) + 30 (60 days * 0.5) = 80
     })
   })
 
