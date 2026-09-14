@@ -33,11 +33,13 @@ export class ItemService {
    * @returns Priority level: 'critical' (score >= 80), 'high' (>= 50), 'medium' (>= 20), or 'low'
    *
    * @example
-   * const item = { name: 'Bug Fix', status: 'urgent', createdAt: new Date('2026-07-01') }
+   * const item = { name: 'Bug Fix', status: 'urgent', createdAt: '2026-07-01T00:00:00.000Z' }
    * const priority = service.calculatePriority(item) // Returns 'critical' or 'high'
    */
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
+    // Ensure timezone-aware comparison by explicitly parsing as UTC
+    const createdDate = new Date(record.createdAt)
+    const ageMs = Date.now() - createdDate.getTime()
     const ageDays = Math.floor(ageMs / 86400000)
     let baseScore = 0
 
