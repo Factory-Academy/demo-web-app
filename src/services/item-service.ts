@@ -1,6 +1,18 @@
 import { Item } from '@/models/item'
 import { IFeatureFlagProvider } from '@/models/feature-flag'
 import { featureFlags } from '@/services/feature-flags'
+import {
+  CRITICAL_PRIORITY_THRESHOLD,
+  HIGH_PRIORITY_THRESHOLD,
+  MEDIUM_PRIORITY_THRESHOLD,
+  URGENT_STATUS_SCORE,
+  AGE_THRESHOLD_DAYS,
+  AGE_SCORE_MULTIPLIER,
+  MS_PER_DAY,
+  MIN_NAME_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+} from '@/services/item-service.constants'
 
 /**
  * Service for managing item operations including priority calculation and validation.
@@ -32,21 +44,23 @@ export class ItemService {
    * @param record - The item record to calculate priority for
    * @returns Priority level: 'critical' (score >= 80), 'high' (>= 50), 'medium' (>= 20), or 'low'
    *
+   * Scoring: urgent status adds 50 points, aged items add 0.5 points per day after 30 days.
+   *
    * @example
    * const item = { name: 'Bug Fix', status: 'urgent', createdAt: new Date('2026-07-01') }
    * const priority = service.calculatePriority(item) // Returns 'critical' or 'high'
    */
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
     const ageMs = Date.now() - new Date(record.createdAt).getTime()
-    const ageDays = Math.floor(ageMs / 86400000)
+    const ageDays = Math.floor(ageMs / MS_PER_DAY)
     let baseScore = 0
 
-    if (record.status === 'urgent') baseScore += 50
-    if (ageDays > 30) baseScore += ageDays * 0.5
+    if (record.status === 'urgent') baseScore += URGENT_STATUS_SCORE
+    if (ageDays > AGE_THRESHOLD_DAYS) baseScore += ageDays * AGE_SCORE_MULTIPLIER
 
-    if (baseScore >= 80) return 'critical'
-    if (baseScore >= 50) return 'high'
-    if (baseScore >= 20) return 'medium'
+    if (baseScore >= CRITICAL_PRIORITY_THRESHOLD) return 'critical'
+    if (baseScore >= HIGH_PRIORITY_THRESHOLD) return 'high'
+    if (baseScore >= MEDIUM_PRIORITY_THRESHOLD) return 'medium'
     return 'low'
   }
 
@@ -82,16 +96,16 @@ export class ItemService {
     
     // Enhanced validation when feature flag is enabled
     if (this.flags.isEnabled('enhanced_validation')) {
-      if (data.name && data.name.trim().length < 3) {
-        errors.push('Name must be at least 3 characters')
+      if (data.name && data.name.trim().length < MIN_NAME_LENGTH) {
+        errors.push(`Name must be at least ${MIN_NAME_LENGTH} characters`)
       }
       
-      if (data.name && data.name.length > 100) {
-        errors.push('Name must not exceed 100 characters')
+      if (data.name && data.name.length > MAX_NAME_LENGTH) {
+        errors.push(`Name must not exceed ${MAX_NAME_LENGTH} characters`)
       }
       
-      if (data.description && data.description.length > 500) {
-        errors.push('Description must not exceed 500 characters')
+      if (data.description && data.description.length > MAX_DESCRIPTION_LENGTH) {
+        errors.push(`Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters`)
       }
     }
     

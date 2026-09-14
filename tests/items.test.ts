@@ -1,5 +1,6 @@
 import { ItemService } from '../src/services/item-service'
 import { IFeatureFlagProvider } from '../src/models/feature-flag'
+import { MIN_NAME_LENGTH, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from '../src/services/item-service.constants'
 
 // Mock feature flag provider for testing
 class MockFeatureFlagProvider implements IFeatureFlagProvider {
@@ -61,7 +62,7 @@ describe('ItemService', () => {
 
       const result = service.validate({ name: 'ab' })
       expect(result.valid).toBe(false)
-      expect(result.errors).toContain('Name must be at least 3 characters')
+      expect(result.errors).toContain(`Name must be at least ${MIN_NAME_LENGTH} characters`)
     })
 
     test('skips enhanced validation when flag is disabled', () => {
@@ -79,10 +80,10 @@ describe('ItemService', () => {
       mockFlags.setFlag('enhanced_validation', true)
       const service = new ItemService(mockFlags)
 
-      const longName = 'a'.repeat(101)
+      const longName = 'a'.repeat(MAX_NAME_LENGTH + 1)
       const result = service.validate({ name: longName })
       expect(result.valid).toBe(false)
-      expect(result.errors).toContain('Name must not exceed 100 characters')
+      expect(result.errors).toContain(`Name must not exceed ${MAX_NAME_LENGTH} characters`)
     })
 
     test('enforces max description length when enhanced validation enabled', () => {
@@ -90,10 +91,10 @@ describe('ItemService', () => {
       mockFlags.setFlag('enhanced_validation', true)
       const service = new ItemService(mockFlags)
 
-      const longDescription = 'a'.repeat(501)
+      const longDescription = 'a'.repeat(MAX_DESCRIPTION_LENGTH + 1)
       const result = service.validate({ name: 'Valid Name', description: longDescription })
       expect(result.valid).toBe(false)
-      expect(result.errors).toContain('Description must not exceed 500 characters')
+      expect(result.errors).toContain(`Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters`)
     })
 
     test('allows valid item with enhanced validation enabled', () => {
