@@ -96,15 +96,20 @@ export class ItemService {
     
     // Enhanced validation when feature flag is enabled
     if (this.flags.isEnabled('enhanced_validation')) {
-      if (data.name && data.name.trim().length < MIN_NAME_LENGTH) {
-        errors.push(`Name must be at least ${MIN_NAME_LENGTH} characters`)
+      // Only apply name length constraints if basic validation passed
+      if (data.name?.trim()) {
+        const trimmedName = data.name.trim()
+        
+        if (trimmedName.length < MIN_NAME_LENGTH) {
+          errors.push(`Name must be at least ${MIN_NAME_LENGTH} characters`)
+        }
+        
+        if (trimmedName.length > MAX_NAME_LENGTH) {
+          errors.push(`Name must not exceed ${MAX_NAME_LENGTH} characters`)
+        }
       }
       
-      if (data.name && data.name.length > MAX_NAME_LENGTH) {
-        errors.push(`Name must not exceed ${MAX_NAME_LENGTH} characters`)
-      }
-      
-      if (data.description && data.description.length > MAX_DESCRIPTION_LENGTH) {
+      if (data.description?.trim() && data.description.trim().length > MAX_DESCRIPTION_LENGTH) {
         errors.push(`Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters`)
       }
     }

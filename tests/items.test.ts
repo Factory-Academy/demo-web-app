@@ -110,5 +110,30 @@ describe('ItemService', () => {
       expect(result.valid).toBe(true)
       expect(result.errors.length).toBe(0)
     })
+
+    test('rejects whitespace-only name without duplicate errors', () => {
+      const mockFlags = new MockFeatureFlagProvider()
+      mockFlags.setFlag('enhanced_validation', true)
+      const service = new ItemService(mockFlags)
+
+      const result = service.validate({ name: '   ' })
+      expect(result.valid).toBe(false)
+      expect(result.errors).toContain('Name is required')
+      // Should not have min length error since basic validation already caught it
+      expect(result.errors.filter(e => e.includes('at least')).length).toBe(0)
+    })
+
+    test('rejects description with only whitespace', () => {
+      const mockFlags = new MockFeatureFlagProvider()
+      mockFlags.setFlag('enhanced_validation', true)
+      const service = new ItemService(mockFlags)
+
+      const result = service.validate({ 
+        name: 'Valid Name',
+        description: '   '
+      })
+      expect(result.valid).toBe(true)
+      expect(result.errors.length).toBe(0)
+    })
   })
 })
