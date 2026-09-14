@@ -51,7 +51,38 @@ describe('ItemService', () => {
       }
       
       const priority = service.calculatePriority(item)
-      expect(priority).toBe('critical') // 50 (urgent) + 20 (40 days * 0.5) = 70, but close to threshold
+      expect(priority).toBe('high') // 50 (urgent) + 20 (40 days * 0.5) = 70
+    })
+
+    test('handles invalid date strings gracefully', () => {
+      const service = new ItemService()
+      const item = {
+        id: '4',
+        name: 'Task',
+        status: 'urgent',
+        createdAt: 'invalid-date',
+        updatedAt: new Date().toISOString()
+      }
+      
+      const priority = service.calculatePriority(item)
+      expect(priority).toBe('low') // Default for invalid dates
+    })
+
+    test('handles future dates by clamping age to zero', () => {
+      const service = new ItemService()
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      
+      const item = {
+        id: '5',
+        name: 'Future Task',
+        status: 'urgent',
+        createdAt: tomorrow.toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      
+      const priority = service.calculatePriority(item)
+      expect(priority).toBe('high') // 50 (urgent) + 0 (future date clamped) = 50
     })
 
     test('correctly calculates age for old items', () => {

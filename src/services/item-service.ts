@@ -39,8 +39,14 @@ export class ItemService {
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
     // Ensure timezone-aware comparison by explicitly parsing as UTC
     const createdDate = new Date(record.createdAt)
+    
+    // Handle invalid dates and future dates (edge cases)
+    if (isNaN(createdDate.getTime())) {
+      return 'low' // Default priority for invalid dates
+    }
+    
     const ageMs = Date.now() - createdDate.getTime()
-    const ageDays = Math.floor(ageMs / 86400000)
+    const ageDays = Math.max(0, Math.floor(ageMs / 86400000)) // Clamp to non-negative
     let baseScore = 0
 
     if (record.status === 'urgent') baseScore += 50
