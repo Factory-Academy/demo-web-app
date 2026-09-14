@@ -1,6 +1,7 @@
 import { Item } from '@/models/item'
 import { IFeatureFlagProvider } from '@/models/feature-flag'
 import { featureFlags } from '@/services/feature-flags'
+import { LRUCache } from '@/utils/lru-cache'
 
 /**
  * Service for managing item operations including priority calculation and validation.
@@ -22,12 +23,16 @@ import { featureFlags } from '@/services/feature-flags'
  */
 export class ItemService {
   private readonly flags: IFeatureFlagProvider
+  private readonly priorityCache: LRUCache<'critical' | 'high' | 'medium' | 'low'>
 
   constructor(flags?: IFeatureFlagProvider) {
     this.flags = flags || featureFlags
+    // Cache priority calculations with 10-minute TTL and max 1000 entries
+    this.priorityCache = new LRUCache({ maxSize: 1000, ttlMs: 10 * 60 * 1000 })
   }
   /**
    * Calculates the priority level of an item based on its status and age.
+   * Results are cached with a 10-minute TTL to reduce repeated calculations.
    *
    * @param record - The item record to calculate priority for
    * @returns Priority level: 'critical' (score >= 80), 'high' (>= 50), 'medium' (>= 20), or 'low'
@@ -37,6 +42,14 @@ export class ItemService {
    * const priority = service.calculatePriority(item) // Returns 'critical' or 'high'
    */
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
+    // Use cache key based on item id and status (age is time-based, TTL handles staleness)
+    const cacheKey = `priority:${record.id}:${record.status}`
+    const cached = this.priorityCache.get(cacheKey)
+    
+    if (cached !== undefined) {
+      return cached
+    }
+
     const ageMs = Date.now() - new Date(record.createdAt).getTime()
     const ageDays = Math.floor(ageMs / 86400000)
     let baseScore = 0
@@ -44,10 +57,14 @@ export class ItemService {
     if (record.status === 'urgent') baseScore += 50
     if (ageDays > 30) baseScore += ageDays * 0.5
 
-    if (baseScore >= 80) return 'critical'
-    if (baseScore >= 50) return 'high'
-    if (baseScore >= 20) return 'medium'
-    return 'low'
+    let priority: 'critical' | 'high' | 'medium' | 'low'
+    if (baseScore >= 80) priority = 'critical'
+    else if (baseScore >= 50) priority = 'high'
+    else if (baseScore >= 20) priority = 'medium'
+    else priority = 'low'
+
+    this.priorityCache.set(cacheKey, priority)
+    return priority
   }
 
   /**
@@ -96,5 +113,20 @@ export class ItemService {
     }
     
     return { valid: errors.length === 0, errors }
+  }
+
+  /**
+   * Clears the priority calculation cache.
+   * Useful when item data changes or for testing.
+   */
+  clearCache(): void {
+    this.priorityCache.clear()
+  }
+
+  /**
+   * Gets the size of the priority cache (for monitoring/testing).
+   */
+  getCacheSize(): number {
+    return this.priorityCache.size()
   }
 }

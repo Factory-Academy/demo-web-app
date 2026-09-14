@@ -110,4 +110,115 @@ describe('ItemService', () => {
       expect(result.errors.length).toBe(0)
     })
   })
+
+  describe('calculatePriority - caching', () => {
+    test('caches priority calculations', () => {
+      const service = new ItemService()
+      const item = {
+        id: '1',
+        name: 'Task',
+        status: 'urgent' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      // First call calculates and caches
+      const priority1 = service.calculatePriority(item)
+      expect(['high', 'critical']).toContain(priority1)
+      expect(service.getCacheSize()).toBe(1)
+
+      // Second call should return cached value
+      const priority2 = service.calculatePriority(item)
+      expect(priority2).toBe(priority1)
+      expect(service.getCacheSize()).toBe(1) // Still 1 entry
+    })
+
+    test('uses different cache entries for different items', () => {
+      const service = new ItemService()
+      const item1 = {
+        id: '1',
+        name: 'Task 1',
+        status: 'urgent' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      const item2 = {
+        id: '2',
+        name: 'Task 2',
+        status: 'active' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      service.calculatePriority(item1)
+      service.calculatePriority(item2)
+      expect(service.getCacheSize()).toBe(2)
+    })
+
+    test('uses cache key based on item id and status', () => {
+      const service = new ItemService()
+      const now = new Date().toISOString()
+      const item1 = {
+        id: '1',
+        name: 'Task 1',
+        status: 'urgent' as const,
+        createdAt: now,
+        updatedAt: now,
+      }
+
+      // First calculation
+      const priority1 = service.calculatePriority(item1)
+
+      // Change name but keep id and status same - should hit cache
+      const item2 = { ...item1, name: 'Different Name' }
+      const priority2 = service.calculatePriority(item2)
+      
+      // Results should be the same (from cache)
+      expect(priority2).toBe(priority1)
+      expect(service.getCacheSize()).toBe(1)
+    })
+
+    test('clears cache correctly', () => {
+      const service = new ItemService()
+      const item = {
+        id: '1',
+        name: 'Task',
+        status: 'urgent' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      service.calculatePriority(item)
+      expect(service.getCacheSize()).toBe(1)
+
+      service.clearCache()
+      expect(service.getCacheSize()).toBe(0)
+
+      // After clear, next call should recalculate
+      service.calculatePriority(item)
+      expect(service.getCacheSize()).toBe(1)
+    })
+
+    test('cache respects status changes in cache key', () => {
+      const service = new ItemService()
+      const now = new Date().toISOString()
+      const baseItem = {
+        id: '1',
+        name: 'Task',
+        createdAt: now,
+        updatedAt: now,
+      }
+
+      const urgentItem = { ...baseItem, status: 'urgent' as const }
+      const activeItem = { ...baseItem, status: 'active' as const }
+
+      const urgentPriority = service.calculatePriority(urgentItem)
+      const activePriority = service.calculatePriority(activeItem)
+
+      // Different status should result in different cache entries
+      expect(service.getCacheSize()).toBe(2)
+      // Urgent items should have higher priority
+      expect(['high', 'critical']).toContain(urgentPriority)
+    })
+  })
 })
