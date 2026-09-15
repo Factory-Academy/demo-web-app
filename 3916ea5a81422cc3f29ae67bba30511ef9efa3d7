@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "3916ea5a81422cc3f29ae67bba30511ef9efa3d7",
+  "prompts": {
+    "17b5e985121446be": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "964280ec-a4d4-4930-b040-148be85cfaef",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Aman Bangad",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 1,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
