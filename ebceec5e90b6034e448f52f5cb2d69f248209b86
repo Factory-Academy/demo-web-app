@@ -1,0 +1,23 @@
+package.json
+  1255c46b1faa4e7c 26-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "ebceec5e90b6034e448f52f5cb2d69f248209b86",
+  "prompts": {
+    "1255c46b1faa4e7c": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "9451f11c-a2a3-4108-85a7-f5819d188178",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Aman Bangad",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 1,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}
