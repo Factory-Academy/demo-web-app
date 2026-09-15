@@ -1,0 +1,90 @@
+name: Bug report
+description: Report reproducible behavior that differs from the template's intent
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Provide enough context for a maintainer or coding agent to reproduce the problem without guessing. This repository may contain intentional findings on demo branches, so identify the affected branch clearly.
+
+  - type: input
+    id: branch
+    attributes:
+      label: Affected branch or commit
+      description: Include the template branch, demo branch, or commit SHA where the problem occurs.
+      placeholder: main, demo/example-2026-09-15, or abc1234
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Template customization
+        - UI or components
+        - API routes
+        - Services or domain logic
+        - Tests or development tooling
+        - Documentation or demo flow
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Problem summary
+      description: Describe what is broken and its impact.
+      placeholder: The item API accepts an invalid status, which leaves the demo in an inconsistent state.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include commands, inputs, routes, and any setup needed to reproduce the problem.
+      placeholder: |
+        1. Run `npm install && npm run dev`.
+        2. Send a POST request to `/api/items` with ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: State the result that should occur.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: State what occurs instead, including exact errors when available.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: intentional-finding
+    attributes:
+      label: Intentional demo finding
+      description: Is this behavior deliberately planted for a demo or review exercise?
+      options:
+        - "No"
+        - "Yes"
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, screenshots, or additional context
+      description: Remove credentials and personal data before attaching evidence.
+      render: shell

@@ -1,0 +1,87 @@
+name: Feature request
+description: Propose a focused improvement to the reusable template or demo workflow
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the outcome and constraints clearly enough for a maintainer or coding agent to implement and verify the request. Keep this minimal template easy to explain during a short live demo.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Target area
+      options:
+        - Template customization
+        - UI or components
+        - API routes
+        - Services or domain logic
+        - Tests or development tooling
+        - Documentation or demo flow
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: Explain the user, maintainer, or demo need. Avoid prescribing an implementation before the need is clear.
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe the observable behavior after this work is complete.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: List concrete, testable conditions that define completion.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints and out-of-scope work
+      description: Note compatibility requirements, files to preserve, template markers, and work that should not be included.
+      placeholder: Preserve all {{MARKER}} tokens and do not add production infrastructure.
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification approach
+      description: Explain how a maintainer or agent can verify the result, including commands or an interactive flow.
+      placeholder: Run the focused Jest test, then npm run lint and npm run build.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: demo-impact
+    attributes:
+      label: Demo customization impact
+      description: Should existing demo branches or customization steps change?
+      options:
+        - No impact expected
+        - Update future customization only
+        - Existing demo branches may need updates
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add examples, mockups, related issues, or implementation considerations.

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Repository guidance
+    url: https://github.com/Factory-Academy/demo-web-app#readme
+    about: Review the template purpose, setup, and demo workflow before opening an issue.
