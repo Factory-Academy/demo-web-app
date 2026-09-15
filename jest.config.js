@@ -6,7 +6,7 @@ const createJestConfig = nextJest({
 
 module.exports = createJestConfig({
   clearMocks: true,
-  collectCoverageFrom: ['src/services/**/*.ts'],
+  collectCoverageFrom: ['src/{lib,services}/**/*.ts'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
   coverageThreshold: {
