@@ -28,6 +28,21 @@ Do not commit `node_modules`, `.next`, local environment files, or credentials.
 If a task introduces environment variables, document their names and provide
 safe example values rather than committing secrets.
 
+### Environment contract
+
+The base template has no required or optional application environment
+variables. It must start locally without an `.env` file.
+
+If a demo customization introduces environment variables:
+
+- Add a `.env.example` containing safe placeholders for every variable.
+- Document whether each variable is required, its default behavior, and where
+  to obtain its value.
+- Keep real values in `.env.local` or the platform secret store. Never commit
+  credentials.
+- Use `NEXT_PUBLIC_` only for values that are safe to expose to browser code.
+- Update the environment section in `README.md` in the same change.
+
 ## Commands
 
 Run these commands from the repository root.

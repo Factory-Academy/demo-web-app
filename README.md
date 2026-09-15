@@ -43,6 +43,18 @@ npm run dev
 
 Open http://localhost:3000. Tests: `npm test`.
 
+### Environment configuration
+
+The base template does not require environment variables. A fresh clone can run
+`npm install` and `npm run dev` without an `.env` file because it has no
+authentication, database, or external API dependency.
+
+Demo customizations that add environment variables must update this section and
+add a `.env.example`. Use safe example values and document whether each variable
+is required, its default behavior, and whether it is available in the browser.
+Keep real values in `.env.local` and never commit them. Only use the
+`NEXT_PUBLIC_` prefix for values that are safe to expose to browser code.
+
 ## Persistent reviewed branch
 
 The `demo/reviewed-example` branch has a draft PR ([#1](../../pull/1)) with pre-written review comments (XSS via `dangerouslySetInnerHTML`, accessibility issues, performance concerns). SEs use this as a fallback if the live PR hasn't been reviewed yet.
