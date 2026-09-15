@@ -1,0 +1,23 @@
+README.md
+  17b5e985121446be 46-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "3eb29af0553d74e6868f737861f33d0ebd3a54d1",
+  "prompts": {
+    "17b5e985121446be": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "964280ec-a4d4-4930-b040-148be85cfaef",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Aman Bangad",
+      "messages": [],
+      "total_additions": 12,
+      "total_deletions": 0,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    }
+  }
+}
