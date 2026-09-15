@@ -87,4 +87,3 @@ body:
     attributes:
       label: Logs, screenshots, or additional context
       description: Remove credentials and personal data before attaching evidence.
-      render: shell
