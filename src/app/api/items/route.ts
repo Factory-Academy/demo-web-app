@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Item } from '@/models/item'
+import { appEvents } from '@/services/event-emitter'
 
 const items: Item[] = []
 let nextId = 1
@@ -17,5 +18,6 @@ export async function POST(request: Request) {
     updatedAt: new Date().toISOString(),
   }
   items.push(item)
+  appEvents.emit('item:created', item)
   return NextResponse.json(item, { status: 201 })
 }
