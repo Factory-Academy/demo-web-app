@@ -7,6 +7,7 @@ an unknown event or the wrong payload shape is a compile error.
 - `src/models/event.ts` — `AppEventMap`, handler/emitter interfaces, domain payloads
 - `src/services/event-emitter.ts` — `TypedEventEmitter` and the shared `appEvents` bus
 - `tests/event-emitter.test.ts` — core emitter behavior
+- `tests/event-emitter-error-dispatch.test.ts` — error-dispatch edge cases
 - `tests/item-service-events.test.ts` — service integration
 
 ```typescript
@@ -18,10 +19,13 @@ off()
 ```
 
 Delivery is synchronous and ordered, handlers added or removed during an `emit`
-take effect on the next one, and a throwing handler never stops the others (the
-first error is rethrown after all run, or routed to an optional `onError`).
-`ItemService` emits `item:validated` and `item:priority_calculated`; the items
-API route emits `item:created`.
+take effect on the next one, and a throwing handler never stops the others.
+Every handler always runs, then failures are surfaced: routed to an optional
+`onError`, or rethrown (a lone error unchanged, multiple errors as an
+`AggregateError` so none are lost). A throwing `onError` is held to the same
+guarantee and never aborts the remaining handlers. `ItemService` emits
+`item:validated` and `item:priority_calculated`; the items API route emits
+`item:created`.
 
 See [`docs/events.md`](docs/events.md) for the full guide.
 

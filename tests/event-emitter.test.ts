@@ -213,7 +213,21 @@ describe('TypedEventEmitter', () => {
       expect(after).toHaveBeenCalledTimes(1)
     })
 
-    test('without onError the first error is thrown after all handlers run', () => {
+    test('without onError a single error is rethrown unchanged after all run', () => {
+      const bus = new TypedEventEmitter<TestEvents>()
+      const after = jest.fn()
+      const boom = new Error('only')
+
+      bus.on('message', () => {
+        throw boom
+      })
+      bus.on('message', after)
+
+      expect(() => bus.emit('message', 'x')).toThrow(boom)
+      expect(after).toHaveBeenCalledTimes(1)
+    })
+
+    test('without onError multiple errors surface together after all run', () => {
       const bus = new TypedEventEmitter<TestEvents>()
       const after = jest.fn()
 
@@ -225,7 +239,19 @@ describe('TypedEventEmitter', () => {
       })
       bus.on('message', after)
 
-      expect(() => bus.emit('message', 'x')).toThrow('first')
+      let caught: unknown
+      try {
+        bus.emit('message', 'x')
+      } catch (error) {
+        caught = error
+      }
+
+      expect(caught).toBeInstanceOf(AggregateError)
+      const messages = (caught as AggregateError).errors.map(
+        (e) => (e as Error).message
+      )
+      // Order matches registration order, and no failure is dropped.
+      expect(messages).toEqual(['first', 'second'])
       expect(after).toHaveBeenCalledTimes(1)
     })
   })

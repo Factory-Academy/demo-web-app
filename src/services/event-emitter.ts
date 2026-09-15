@@ -120,25 +120,19 @@ export class TypedEventEmitter<TEvents extends EventMap>
     // Snapshot so mutations during dispatch (off/on/once) don't skip or
     // double-invoke handlers mid-loop.
     const snapshot = bucket.slice() as Array<EventHandler<TEvents[K]>>
-    let firstError: unknown
-    let hasError = false
+    const errors: unknown[] = []
 
     for (const handler of snapshot) {
       try {
         handler(payload)
       } catch (error) {
-        if (this.options.onError) {
-          this.options.onError(error, event)
-        } else if (!hasError) {
-          hasError = true
-          firstError = error
-        }
+        this.captureError(error, event, errors)
       }
     }
 
-    // With no onError sink, surface the failure once every handler has had a
-    // chance to run rather than swallowing it.
-    if (hasError) throw firstError
+    // Every handler always runs; any failures are surfaced only after the full
+    // dispatch, so a single throwing handler can never suppress the others.
+    this.surfaceErrors(errors)
 
     return true
   }
@@ -159,6 +153,42 @@ export class TypedEventEmitter<TEvents extends EventMap>
 
   eventNames(): Array<keyof TEvents> {
     return Array.from(this.handlers.keys())
+  }
+
+  /**
+   * Route a handler failure during {@link emit}. With an `onError` sink the
+   * error is handed to it; without one it is buffered to be surfaced after the
+   * dispatch completes. A sink that throws is itself buffered rather than
+   * allowed to abort the remaining handlers.
+   */
+  private captureError(
+    error: unknown,
+    event: keyof TEvents,
+    sink: unknown[]
+  ): void {
+    if (!this.options.onError) {
+      sink.push(error)
+      return
+    }
+    try {
+      this.options.onError(error, event)
+    } catch (onErrorFailure) {
+      sink.push(onErrorFailure)
+    }
+  }
+
+  /**
+   * Rethrow buffered dispatch failures once every handler has run. A single
+   * failure is rethrown unchanged so its type and stack are preserved; multiple
+   * failures are wrapped in an {@link AggregateError} so none are lost.
+   */
+  private surfaceErrors(errors: unknown[]): void {
+    if (errors.length === 0) return
+    if (errors.length === 1) throw errors[0]
+    throw new AggregateError(
+      errors,
+      `${errors.length} handlers threw during emit`
+    )
   }
 
   private warnIfLeaking(event: keyof TEvents, count: number): void {

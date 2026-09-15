@@ -34,6 +34,8 @@ export type Unsubscribe = () => void
  *
  * Providing this to an emitter keeps a single misbehaving handler from
  * interrupting the others: each error is routed here instead of propagating.
+ * If this callback itself throws, that failure does not abort the remaining
+ * handlers either; it is surfaced after the dispatch completes.
  *
  * @typeParam TEvents - The emitter's event map
  * @param error - The value thrown by the handler
@@ -53,8 +55,10 @@ export interface EventEmitterOptions<TEvents extends EventMap> {
   /**
    * Invoked for each handler that throws while an event is being emitted.
    *
-   * When omitted, the first error is rethrown after all remaining handlers for
-   * the event have run, so a throwing handler never silently swallows failures.
+   * When omitted, handler failures are buffered until every handler has run and
+   * then rethrown: a lone failure is rethrown unchanged, while multiple
+   * failures are combined into an `AggregateError` so none are silently
+   * swallowed.
    */
   onError?: EventErrorHandler<TEvents>
 
@@ -116,6 +120,11 @@ export interface IEventEmitter<TEvents extends EventMap> {
 
   /**
    * Synchronously deliver a payload to every handler registered for an event.
+   *
+   * Every registered handler is always invoked, even if an earlier one throws.
+   * Failures are surfaced only after the full dispatch: routed to `onError` when
+   * one is configured, otherwise rethrown (a single error unchanged, multiple
+   * errors as an `AggregateError`).
    *
    * @param event - The event name to emit
    * @param payload - The payload passed to each handler

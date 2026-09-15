@@ -60,8 +60,21 @@ appEvents.once('item:validated', ({ valid, errors }) => {
 
 ## Error handling
 
-By default a handler that throws does not stop the others: every handler runs,
-then the first error is rethrown so failures are never silently swallowed.
+A handler that throws never stops the others: every handler always runs, and
+failures are surfaced only after the full dispatch. With no `onError` a lone
+failure is rethrown unchanged (its type and stack preserved), while multiple
+failures are combined into an [`AggregateError`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/AggregateError)
+so none are silently dropped:
+
+```typescript
+try {
+  appEvents.emit('item:validated', payload)
+} catch (error) {
+  if (error instanceof AggregateError) {
+    // error.errors holds every handler failure, in registration order.
+  }
+}
+```
 
 Pass `onError` to route errors somewhere instead of rethrowing:
 
@@ -73,6 +86,10 @@ const bus = new TypedEventEmitter<AppEventMap>({
   onError: (error, event) => reportToMetrics(event, error),
 })
 ```
+
+An `onError` callback that itself throws is held to the same guarantee: its
+failure does not abort the remaining handlers and is surfaced after dispatch
+(alongside any others, as an `AggregateError`, when there is more than one).
 
 ## Leak detection
 
