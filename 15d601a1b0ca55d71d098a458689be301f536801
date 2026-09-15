@@ -1,0 +1,25 @@
+tests/items-route.test.ts
+  1255c46b1faa4e7c 1-72
+src/lib/logger.ts
+  1255c46b1faa4e7c 1-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "15d601a1b0ca55d71d098a458689be301f536801",
+  "prompts": {
+    "1255c46b1faa4e7c": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "9451f11c-a2a3-4108-85a7-f5819d188178",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Aman Bangad",
+      "messages": [],
+      "total_additions": 179,
+      "total_deletions": 20,
+      "accepted_lines": 159,
+      "overriden_lines": 0
+    }
+  }
+}
