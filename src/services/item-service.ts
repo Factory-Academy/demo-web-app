@@ -1,6 +1,18 @@
 import { Item } from '@/models/item'
 import { IFeatureFlagProvider } from '@/models/feature-flag'
 import { featureFlags } from '@/services/feature-flags'
+import {
+  MS_PER_DAY,
+  URGENT_BASE_SCORE,
+  AGE_THRESHOLD_DAYS,
+  AGE_SCORE_MULTIPLIER,
+  CRITICAL_SCORE_THRESHOLD,
+  HIGH_SCORE_THRESHOLD,
+  MEDIUM_SCORE_THRESHOLD,
+  MIN_NAME_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+} from '@/constants/validation'
 
 /**
  * Service for managing item operations including priority calculation and validation.
@@ -29,8 +41,13 @@ export class ItemService {
   /**
    * Calculates the priority level of an item based on its status and age.
    *
+   * Priority scoring uses configurable constants:
+   * - Urgent items receive a base score boost
+   * - Items older than a threshold accumulate age-based score
+   * - Final levels determined by score thresholds (see VALIDATION constants)
+   *
    * @param record - The item record to calculate priority for
-   * @returns Priority level: 'critical' (score >= 80), 'high' (>= 50), 'medium' (>= 20), or 'low'
+   * @returns Priority level: 'critical', 'high', 'medium', or 'low'
    *
    * @example
    * const item = { name: 'Bug Fix', status: 'urgent', createdAt: new Date('2026-07-01') }
@@ -38,15 +55,15 @@ export class ItemService {
    */
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
     const ageMs = Date.now() - new Date(record.createdAt).getTime()
-    const ageDays = Math.floor(ageMs / 86400000)
+    const ageDays = Math.floor(ageMs / MS_PER_DAY)
     let baseScore = 0
 
-    if (record.status === 'urgent') baseScore += 50
-    if (ageDays > 30) baseScore += ageDays * 0.5
+    if (record.status === 'urgent') baseScore += URGENT_BASE_SCORE
+    if (ageDays > AGE_THRESHOLD_DAYS) baseScore += ageDays * AGE_SCORE_MULTIPLIER
 
-    if (baseScore >= 80) return 'critical'
-    if (baseScore >= 50) return 'high'
-    if (baseScore >= 20) return 'medium'
+    if (baseScore >= CRITICAL_SCORE_THRESHOLD) return 'critical'
+    if (baseScore >= HIGH_SCORE_THRESHOLD) return 'high'
+    if (baseScore >= MEDIUM_SCORE_THRESHOLD) return 'medium'
     return 'low'
   }
 
@@ -82,16 +99,16 @@ export class ItemService {
     
     // Enhanced validation when feature flag is enabled
     if (this.flags.isEnabled('enhanced_validation')) {
-      if (data.name && data.name.trim().length < 3) {
-        errors.push('Name must be at least 3 characters')
+      if (data.name && data.name.trim().length < MIN_NAME_LENGTH) {
+        errors.push(`Name must be at least ${MIN_NAME_LENGTH} characters`)
       }
       
-      if (data.name && data.name.length > 100) {
-        errors.push('Name must not exceed 100 characters')
+      if (data.name && data.name.length > MAX_NAME_LENGTH) {
+        errors.push(`Name must not exceed ${MAX_NAME_LENGTH} characters`)
       }
       
-      if (data.description && data.description.length > 500) {
-        errors.push('Description must not exceed 500 characters')
+      if (data.description && data.description.length > MAX_DESCRIPTION_LENGTH) {
+        errors.push(`Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters`)
       }
     }
     
