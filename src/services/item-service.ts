@@ -26,6 +26,23 @@ export class ItemService {
   constructor(flags?: IFeatureFlagProvider) {
     this.flags = flags || featureFlags
   }
+
+  private getAgeDays(createdAt: string): number {
+    const createdDate = new Date(createdAt)
+    if (Number.isNaN(createdDate.getTime())) {
+      return 0
+    }
+
+    const now = new Date()
+    const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    const createdUtc = Date.UTC(
+      createdDate.getUTCFullYear(),
+      createdDate.getUTCMonth(),
+      createdDate.getUTCDate(),
+    )
+
+    return Math.max(0, Math.floor((todayUtc - createdUtc) / 86400000))
+  }
   /**
    * Calculates the priority level of an item based on its status and age.
    *
@@ -37,8 +54,7 @@ export class ItemService {
    * const priority = service.calculatePriority(item) // Returns 'critical' or 'high'
    */
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
-    const ageDays = Math.floor(ageMs / 86400000)
+    const ageDays = this.getAgeDays(record.createdAt)
     let baseScore = 0
 
     if (record.status === 'urgent') baseScore += 50

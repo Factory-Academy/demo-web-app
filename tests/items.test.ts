@@ -30,6 +30,24 @@ describe('ItemService', () => {
       const priority = service.calculatePriority(item)
       expect(['high', 'critical']).toContain(priority)
     })
+
+    test('uses UTC calendar-day comparison for age-based priority', () => {
+      jest.useFakeTimers()
+      try {
+        jest.setSystemTime(new Date('2026-09-30T00:30:00.000Z'))
+
+        const service = new ItemService()
+        const item = {
+          name: 'Task',
+          status: 'urgent' as const,
+          createdAt: '2026-08-01T23:45:00.000Z',
+        }
+
+        expect(service.calculatePriority(item)).toBe('critical')
+      } finally {
+        jest.useRealTimers()
+      }
+    })
   })
 
   describe('validate - basic validation', () => {
