@@ -1,0 +1,23 @@
+.github/labels.json
+  17b5e985121446be 1-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "4dc65996373c0d2c2d43967b35a3fe3f2a11e90c",
+  "prompts": {
+    "17b5e985121446be": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "964280ec-a4d4-4930-b040-148be85cfaef",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Aman Bangad",
+      "messages": [],
+      "total_additions": 80,
+      "total_deletions": 0,
+      "accepted_lines": 80,
+      "overriden_lines": 0
+    }
+  }
+}
