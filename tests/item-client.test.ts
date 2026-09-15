@@ -4,6 +4,7 @@ import {
   isRetryableHttpError,
 } from '../src/services/item-client'
 import {
+  AbortError,
   CircuitOpenError,
   TimeoutError,
 } from '../src/services/resilience-errors'
@@ -137,5 +138,28 @@ describe('ItemClient', () => {
     // 3 attempts trip the breaker; the 4th short-circuits before fetching.
     expect(fetchFn).toHaveBeenCalledTimes(3)
     expect(client.getCircuitState()).toBe('open')
+  })
+
+  test('propagates a caller abort as AbortError without opening the circuit', async () => {
+    const controller = new AbortController()
+    const fetchFn = jest.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => reject(new Error('aborted')))
+        }),
+    )
+    const client = new ItemClient({
+      fetchFn: fetchFn as unknown as typeof fetch,
+      resilience: {
+        retry: { sleep: instantSleep },
+        circuitBreaker: { failureThreshold: 1 },
+      },
+    })
+
+    const promise = client.listItems({ signal: controller.signal })
+    controller.abort()
+
+    await expect(promise).rejects.toBeInstanceOf(AbortError)
+    expect(client.getCircuitState()).toBe('closed')
   })
 })

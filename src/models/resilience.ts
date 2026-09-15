@@ -102,6 +102,14 @@ export interface RetryOptions {
   random?: () => number
 
   /**
+   * Optional external abort signal. When it fires, the whole retry operation is
+   * cancelled: any in-flight attempt is aborted, a pending backoff is cut short,
+   * and the operation rejects with an `AbortError`. Cancellation is never
+   * retried and is not counted as a dependency failure.
+   */
+  signal?: AbortSignal
+
+  /**
    * Injectable timer functions, primarily for testing the timeout path.
    */
   setTimeoutFn?: typeof setTimeout
@@ -129,6 +137,14 @@ export interface CircuitBreakerOptions {
    * (transition to `half-open`), in milliseconds.
    */
   resetTimeoutMs: number
+
+  /**
+   * Maximum number of concurrent trial calls permitted while `half-open`.
+   * Additional concurrent callers are rejected with a {@link CircuitOpenError}
+   * so a burst of traffic cannot all pile onto a dependency that is only
+   * tentatively healthy. Defaults to 1.
+   */
+  halfOpenMaxProbes?: number
 
   /**
    * Injectable clock, defaults to `Date.now`.

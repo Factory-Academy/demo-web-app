@@ -1,6 +1,7 @@
 import { ResilientExecutor } from '../src/services/resilient-executor'
 import { CircuitBreaker } from '../src/services/circuit-breaker'
 import {
+  AbortError,
   CircuitOpenError,
   RetryExhaustedError,
 } from '../src/services/resilience-errors'
@@ -115,5 +116,26 @@ describe('ResilientExecutor', () => {
 
     expect(executor.getState()).toBe('closed')
     expect(executor.snapshot().state).toBe('closed')
+  })
+
+  test('propagates a caller abort without tripping the breaker', async () => {
+    const breaker = new CircuitBreaker({ failureThreshold: 1 })
+    const executor = new ResilientExecutor({
+      breaker,
+      retry: { maxRetries: 3, sleep: instantSleep },
+    })
+
+    const controller = new AbortController()
+    const task = (signal: AbortSignal) =>
+      new Promise<string>((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('fetch aborted')))
+      })
+
+    const promise = executor.execute(task, { signal: controller.signal })
+    controller.abort()
+
+    await expect(promise).rejects.toBeInstanceOf(AbortError)
+    // Cancellation is not a dependency failure, so the breaker stays closed.
+    expect(breaker.getState()).toBe('closed')
   })
 })

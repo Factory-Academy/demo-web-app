@@ -1,5 +1,9 @@
 import { CircuitBreaker } from '../src/services/circuit-breaker'
-import { CircuitOpenError } from '../src/services/resilience-errors'
+import {
+  AbortError,
+  CircuitOpenError,
+  ConfigError,
+} from '../src/services/resilience-errors'
 import { CircuitState } from '../src/models/resilience'
 
 // A controllable clock so reset timeouts can be advanced deterministically.
@@ -155,5 +159,64 @@ describe('CircuitBreaker', () => {
 
     expect(breaker.getState()).toBe('closed')
     expect(breaker.snapshot().failures).toBe(0)
+  })
+
+  test('admits only one concurrent probe while half-open', async () => {
+    const clock = fakeClock()
+    const breaker = new CircuitBreaker({
+      failureThreshold: 1,
+      successThreshold: 2,
+      resetTimeoutMs: 1000,
+      now: clock.now,
+    })
+
+    await expect(breaker.execute(fail())).rejects.toThrow('boom')
+    clock.advance(1000)
+    expect(breaker.getState()).toBe('half-open')
+
+    // Hold the first probe open so a second overlaps it.
+    let release: (value: string) => void = () => {}
+    const gate = new Promise<string>((resolve) => {
+      release = resolve
+    })
+    const firstProbe = breaker.execute(() => gate)
+
+    const secondTask = jest.fn(succeed)
+    await expect(breaker.execute(secondTask)).rejects.toBeInstanceOf(CircuitOpenError)
+    expect(secondTask).not.toHaveBeenCalled()
+
+    release('ok')
+    await expect(firstProbe).resolves.toBe('ok')
+
+    // The slot is freed once the probe settles, so a later probe is admitted.
+    await expect(breaker.execute(succeed)).resolves.toBe('ok')
+    expect(breaker.getState()).toBe('closed')
+  })
+
+  test('does not count an AbortError as a failure', async () => {
+    const breaker = new CircuitBreaker({ failureThreshold: 1 })
+
+    await expect(
+      breaker.execute(() => Promise.reject(new AbortError())),
+    ).rejects.toBeInstanceOf(AbortError)
+
+    expect(breaker.getState()).toBe('closed')
+    expect(breaker.snapshot().failures).toBe(0)
+  })
+
+  test('a throwing onStateChange hook does not prevent the transition', async () => {
+    const breaker = new CircuitBreaker({
+      failureThreshold: 1,
+      onStateChange: () => {
+        throw new Error('hook exploded')
+      },
+    })
+
+    await expect(breaker.execute(fail())).rejects.toThrow('boom')
+    expect(breaker.getState()).toBe('open')
+  })
+
+  test('rejects invalid configuration at construction', () => {
+    expect(() => new CircuitBreaker({ failureThreshold: 0 })).toThrow(ConfigError)
   })
 })

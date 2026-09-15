@@ -356,3 +356,78 @@ added to run the TypeScript test suite (with the `@/*` path alias mapped to
 - Metrics/telemetry hooks on state changes and retries
 - `Retry-After` header support for 429/503 responses
 - Bulkhead (concurrency limiting) to complement the breaker
+
+## Follow-up: edge-case hardening
+
+A review pass tightened the edge cases around cancellation, configuration, and
+concurrency. These are additive; the public API is unchanged except for two new
+optional inputs (a `signal` on retry options / client requests and
+`halfOpenMaxProbes` on the breaker).
+
+### Cancellation (`AbortError`)
+
+Callers can now cancel an entire resilient operation, not just a single attempt.
+
+```typescript
+const controller = new AbortController()
+const items = client.listItems({ signal: controller.signal })
+controller.abort() // rejects with AbortError
+```
+
+Cancellation is threaded through every layer:
+
+- `withTimeout` accepts an external `signal`; an already-aborted signal fails
+  fast, and a mid-flight abort surfaces as `AbortError` regardless of how the
+  underlying task rejected once its signal fired (a timeout keeps its own
+  `TimeoutError`, since the external signal is not the cause).
+- `retryWithBackoff` checks the signal before each attempt and cuts a pending
+  backoff short (`abortableSleep`), so a doomed retry never proceeds.
+- **Cancellation is not a failure.** It is never retried, and the circuit
+  breaker ignores `AbortError` so a caller walking away can't trip the circuit.
+
+### Configuration validation (`ConfigError`)
+
+Options are now validated centrally in `services/resilience-config.ts`
+(`resolveRetryOptions`, `resolveCircuitBreakerOptions`). Nonsensical values fail
+loudly with a `ConfigError` naming the offending field instead of silently
+misbehaving:
+
+- `retry`: `maxRetries` (integer >= 0), `initialDelayMs`/`maxDelayMs` (finite
+  >= 0), `backoffFactor` (finite >= 1), finite `timeoutMs`, function
+  `shouldRetry`.
+- `circuitBreaker`: `failureThreshold`/`successThreshold`/`halfOpenMaxProbes`
+  (integers >= 1), `resetTimeoutMs` (finite >= 0).
+
+  Previously, e.g. `failureThreshold: 0` would trip the breaker on the very
+  first failure — now it's rejected outright.
+
+### Concurrent half-open probes
+
+While `half-open`, the breaker admits at most `halfOpenMaxProbes` concurrent
+trial calls (default 1); extra concurrent callers are rejected with
+`CircuitOpenError`. This stops a burst of traffic from all stampeding a
+dependency that is only tentatively healthy.
+
+### Callback isolation
+
+`onRetry`, `onTimeout`, and `onStateChange` are observability hooks. They are now
+invoked through `safeInvoke`, so a throwing hook can't derail the retry loop or a
+breaker state transition.
+
+### New / changed files
+
+- `src/services/resilience-config.ts` - defaults + option validation (new)
+- `src/services/resilience-util.ts` - `safeInvoke`, `abortableSleep` (new)
+- `src/services/resilience-errors.ts` - added `AbortError`, `ConfigError`
+- `src/models/resilience.ts` - added `RetryOptions.signal`,
+  `CircuitBreakerOptions.halfOpenMaxProbes`
+- `src/services/retry.ts` - signal-aware `withTimeout`, cancellation + hook
+  isolation in `retryWithBackoff`
+- `src/services/circuit-breaker.ts` - probe gating, `AbortError` handling,
+  hook isolation
+- `src/services/resilient-executor.ts` - threads the signal through all layers
+- `src/services/item-client.ts` - optional per-request `signal`
+- `tests/resilience-config.test.ts` - validation coverage (new)
+- `tests/retry.test.ts`, `tests/circuit-breaker.test.ts`,
+  `tests/resilient-executor.test.ts`, `tests/item-client.test.ts` - added
+  cancellation, concurrency, and hook-isolation cases

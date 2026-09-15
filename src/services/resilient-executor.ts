@@ -6,7 +6,7 @@ import {
 } from '@/models/resilience'
 import { CircuitBreaker } from '@/services/circuit-breaker'
 import { retryWithBackoff, withTimeout, DEFAULT_RETRY_OPTIONS } from '@/services/retry'
-import { CircuitOpenError } from '@/services/resilience-errors'
+import { AbortError, CircuitOpenError } from '@/services/resilience-errors'
 
 /**
  * Extended options for constructing a {@link ResilientExecutor}, allowing a
@@ -75,26 +75,31 @@ export class ResilientExecutor {
     const merged: Partial<RetryOptions> = { ...this.retryOptions, ...overrides }
     const baseShouldRetry = merged.shouldRetry ?? DEFAULT_RETRY_OPTIONS.shouldRetry
     const timeoutMs = merged.timeoutMs ?? DEFAULT_RETRY_OPTIONS.timeoutMs
+    const signal = merged.signal
 
     const shouldRetry: RetryOptions['shouldRetry'] = (error, attempt) => {
       // A tripped breaker will keep rejecting; retrying is pointless and would
       // just churn until the retry budget is spent.
       if (error instanceof CircuitOpenError) return false
+      // Cancellation is terminal; the retry loop also short-circuits on it, but
+      // guarding here keeps a custom shouldRetry from resurrecting it.
+      if (error instanceof AbortError) return false
       return baseShouldRetry(error, attempt)
     }
 
-    // The timeout is applied inside the breaker so that a timed-out attempt is
-    // observed as a breaker failure. The retry layer's own timeout is disabled
-    // (timeoutMs: 0) to avoid double-wrapping.
+    // The timeout (and external abort) is applied inside the breaker so that a
+    // timed-out attempt is observed as a breaker failure while a cancellation is
+    // not. The retry layer's own timeout is disabled (timeoutMs: 0) to avoid
+    // double-wrapping; it still receives the signal for pre-attempt and
+    // mid-backoff cancellation checks.
     const guardedAttempt = () =>
       this.breaker.execute(() =>
-        timeoutMs > 0
-          ? withTimeout(task, {
-              timeoutMs,
-              setTimeoutFn: merged.setTimeoutFn,
-              clearTimeoutFn: merged.clearTimeoutFn,
-            })
-          : task(new AbortController().signal),
+        withTimeout(task, {
+          timeoutMs,
+          signal,
+          setTimeoutFn: merged.setTimeoutFn,
+          clearTimeoutFn: merged.clearTimeoutFn,
+        }),
       )
 
     return retryWithBackoff(() => guardedAttempt(), {

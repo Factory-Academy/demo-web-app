@@ -62,6 +62,17 @@ export interface ItemClientOptions {
   executor?: ResilientExecutor
 }
 
+/**
+ * Per-request options common to the client's methods.
+ */
+export interface RequestOptions {
+  /**
+   * Optional abort signal to cancel this request (and any in-flight retry).
+   * Cancellation rejects with an `AbortError` and does not trip the breaker.
+   */
+  signal?: AbortSignal
+}
+
 const DEFAULT_TIMEOUT_MS = 5000
 
 /**
@@ -109,42 +120,52 @@ export class ItemClient {
   /**
    * Fetches all items.
    *
+   * @param options - Optional per-request settings (e.g. an abort `signal`).
    * @throws {HttpError} On a non-2xx response.
    * @throws {CircuitOpenError} When the breaker is open.
    * @throws {RetryExhaustedError} When retries are exhausted.
+   * @throws {AbortError} When cancelled via `options.signal`.
    */
-  async listItems(): Promise<Item[]> {
-    return this.executor.execute(async (signal) => {
-      const response = await this.fetchFn(this.url('/api/items'), {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        signal,
-      })
-      return this.parseJson<Item[]>(response)
-    })
+  async listItems(options: RequestOptions = {}): Promise<Item[]> {
+    return this.executor.execute(
+      async (signal) => {
+        const response = await this.fetchFn(this.url('/api/items'), {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          signal,
+        })
+        return this.parseJson<Item[]>(response)
+      },
+      { signal: options.signal },
+    )
   }
 
   /**
    * Creates a new item.
    *
    * @param input - The item to create.
+   * @param options - Optional per-request settings (e.g. an abort `signal`).
    * @throws {HttpError} On a non-2xx response.
    * @throws {CircuitOpenError} When the breaker is open.
    * @throws {RetryExhaustedError} When retries are exhausted.
+   * @throws {AbortError} When cancelled via `options.signal`.
    */
-  async createItem(input: ItemCreate): Promise<Item> {
-    return this.executor.execute(async (signal) => {
-      const response = await this.fetchFn(this.url('/api/items'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(input),
-        signal,
-      })
-      return this.parseJson<Item>(response)
-    })
+  async createItem(input: ItemCreate, options: RequestOptions = {}): Promise<Item> {
+    return this.executor.execute(
+      async (signal) => {
+        const response = await this.fetchFn(this.url('/api/items'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify(input),
+          signal,
+        })
+        return this.parseJson<Item>(response)
+      },
+      { signal: options.signal },
+    )
   }
 
   private url(path: string): string {

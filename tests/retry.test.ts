@@ -5,6 +5,8 @@ import {
   DEFAULT_RETRY_OPTIONS,
 } from '../src/services/retry'
 import {
+  AbortError,
+  ConfigError,
   RetryExhaustedError,
   TimeoutError,
 } from '../src/services/resilience-errors'
@@ -12,6 +14,9 @@ import { RetryOptions } from '../src/models/resilience'
 
 // A sleep that resolves instantly so tests never wait on real timers.
 const instantSleep = () => Promise.resolve()
+
+// A real-timer sleep, used only where a test needs to abort mid-backoff.
+const realSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 describe('computeBackoffDelay', () => {
   const base: RetryOptions = {
@@ -70,6 +75,38 @@ describe('withTimeout', () => {
   test('runs without a timer when timeoutMs <= 0', async () => {
     const result = await withTimeout(async (signal) => signal.aborted, { timeoutMs: 0 })
     expect(result).toBe(false)
+  })
+
+  test('rejects with AbortError when the signal is already aborted', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const task = jest.fn(async () => 'nope')
+
+    await expect(
+      withTimeout(task, { timeoutMs: 1000, signal: controller.signal }),
+    ).rejects.toBeInstanceOf(AbortError)
+    expect(task).not.toHaveBeenCalled()
+  })
+
+  test('surfaces a mid-flight abort as AbortError, not the task error', async () => {
+    const controller = new AbortController()
+    const task = (signal: AbortSignal) =>
+      new Promise<string>((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('inner rejection')))
+      })
+
+    const promise = withTimeout(task, { timeoutMs: 0, signal: controller.signal })
+    controller.abort()
+
+    await expect(promise).rejects.toBeInstanceOf(AbortError)
+  })
+
+  test('a timeout still wins over a provided (unaborted) signal', async () => {
+    const controller = new AbortController()
+    const slow = () => new Promise<string>((resolve) => setTimeout(() => resolve('late'), 50))
+    await expect(
+      withTimeout(slow, { timeoutMs: 10, signal: controller.signal }),
+    ).rejects.toBeInstanceOf(TimeoutError)
   })
 
   test('clears the timer after the task resolves', async () => {
@@ -194,5 +231,85 @@ describe('retryWithBackoff', () => {
 
     expect(result).toBe('fast')
     expect(task).toHaveBeenCalledTimes(2)
+  })
+
+  test('throws ConfigError on invalid options instead of running the task', async () => {
+    const task = jest.fn(async () => 'value')
+    await expect(
+      retryWithBackoff(task, { maxRetries: -3 }),
+    ).rejects.toBeInstanceOf(ConfigError)
+    expect(task).not.toHaveBeenCalled()
+  })
+
+  test('a throwing onRetry hook does not break the retry loop', async () => {
+    let calls = 0
+    const task = jest.fn(async () => {
+      calls++
+      if (calls < 2) throw new Error('transient')
+      return 'ok'
+    })
+
+    const result = await retryWithBackoff(task, {
+      maxRetries: 2,
+      sleep: instantSleep,
+      jitter: false,
+      onRetry: () => {
+        throw new Error('hook exploded')
+      },
+    })
+
+    expect(result).toBe('ok')
+    expect(task).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('retryWithBackoff cancellation', () => {
+  test('rejects immediately when the signal is already aborted', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const task = jest.fn(async () => 'nope')
+
+    await expect(
+      retryWithBackoff(task, { signal: controller.signal, sleep: instantSleep }),
+    ).rejects.toBeInstanceOf(AbortError)
+    expect(task).not.toHaveBeenCalled()
+  })
+
+  test('stops retrying when the signal aborts during backoff', async () => {
+    const controller = new AbortController()
+    const task = jest.fn(async () => {
+      throw new Error('always fails')
+    })
+
+    const promise = retryWithBackoff(task, {
+      maxRetries: 5,
+      initialDelayMs: 50,
+      jitter: false,
+      signal: controller.signal,
+      sleep: realSleep,
+    })
+
+    // Abort while the first backoff is still pending.
+    setTimeout(() => controller.abort(), 10)
+
+    await expect(promise).rejects.toBeInstanceOf(AbortError)
+    expect(task).toHaveBeenCalledTimes(1)
+  })
+
+  test('does not wrap a cancellation in RetryExhaustedError', async () => {
+    const controller = new AbortController()
+    const task = (signal: AbortSignal) =>
+      new Promise<string>((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('inner')))
+      })
+
+    const promise = retryWithBackoff(task, {
+      maxRetries: 3,
+      sleep: instantSleep,
+      signal: controller.signal,
+    })
+    controller.abort()
+
+    await expect(promise).rejects.toBeInstanceOf(AbortError)
   })
 })

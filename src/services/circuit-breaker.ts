@@ -4,17 +4,11 @@ import {
   CircuitState,
   Clock,
 } from '@/models/resilience'
-import { CircuitOpenError } from '@/services/resilience-errors'
+import { AbortError, CircuitOpenError } from '@/services/resilience-errors'
+import { resolveCircuitBreakerOptions } from '@/services/resilience-config'
+import { safeInvoke } from '@/services/resilience-util'
 
-/**
- * Default breaker policy: trip after 5 consecutive failures, require 2
- * consecutive successes to recover, and wait 30s before probing.
- */
-export const DEFAULT_CIRCUIT_BREAKER_OPTIONS: CircuitBreakerOptions = {
-  failureThreshold: 5,
-  successThreshold: 2,
-  resetTimeoutMs: 30000,
-}
+export { DEFAULT_CIRCUIT_BREAKER_OPTIONS } from '@/services/resilience-config'
 
 /**
  * A circuit breaker that protects a flaky dependency from repeated calls once
@@ -26,9 +20,11 @@ export const DEFAULT_CIRCUIT_BREAKER_OPTIONS: CircuitBreakerOptions = {
  * - `open`: calls are rejected immediately with a {@link CircuitOpenError}.
  *   After `resetTimeoutMs`, the next call transitions the breaker to
  *   `half-open`.
- * - `half-open`: a single probe call is allowed. Success advances toward
- *   recovery (`successThreshold` consecutive successes return it to `closed`);
- *   any failure sends it back to `open`.
+ * - `half-open`: up to `halfOpenMaxProbes` concurrent probe calls are allowed
+ *   (default 1); extra concurrent callers are rejected with a
+ *   {@link CircuitOpenError}. A probe's success advances toward recovery
+ *   (`successThreshold` consecutive successes return it to `closed`); any
+ *   failure sends it back to `open`.
  *
  * @example
  * const breaker = new CircuitBreaker({ failureThreshold: 3, resetTimeoutMs: 10000 })
@@ -43,10 +39,13 @@ export class CircuitBreaker {
   private successCount = 0
   private openedAt = 0
   private lastError: unknown = undefined
+  private inFlightProbes = 0
+  private readonly halfOpenMaxProbes: number
 
   constructor(options: Partial<CircuitBreakerOptions> = {}) {
-    this.options = { ...DEFAULT_CIRCUIT_BREAKER_OPTIONS, ...options }
+    this.options = resolveCircuitBreakerOptions(options)
     this.now = this.options.now ?? Date.now
+    this.halfOpenMaxProbes = this.options.halfOpenMaxProbes ?? 1
   }
 
   /**
@@ -85,13 +84,30 @@ export class CircuitBreaker {
       throw new CircuitOpenError(this.remainingOpenMs(), this.lastError)
     }
 
+    const isProbe = this.state === 'half-open'
+    if (isProbe && this.inFlightProbes >= this.halfOpenMaxProbes) {
+      // Cap concurrent recovery probes: a burst of callers must not all hammer
+      // a dependency that is only tentatively healthy.
+      throw new CircuitOpenError(
+        Math.max(0, this.remainingOpenMs()),
+        this.lastError,
+      )
+    }
+    if (isProbe) this.inFlightProbes++
+
     try {
       const result = await task()
       this.onSuccess()
       return result
     } catch (error) {
-      this.onFailure(error)
+      // A caller-initiated cancellation is not evidence that the dependency is
+      // unhealthy, so it must not count against the breaker.
+      if (!(error instanceof AbortError)) {
+        this.onFailure(error)
+      }
       throw error
+    } finally {
+      if (isProbe) this.inFlightProbes = Math.max(0, this.inFlightProbes - 1)
     }
   }
 
@@ -157,11 +173,12 @@ export class CircuitBreaker {
       this.successCount = 0
     } else if (next === 'half-open') {
       this.successCount = 0
+      this.inFlightProbes = 0
     } else if (next === 'closed') {
       this.failureCount = 0
       this.successCount = 0
     }
 
-    this.options.onStateChange?.(previous, next)
+    safeInvoke(() => this.options.onStateChange?.(previous, next))
   }
 }

@@ -63,6 +63,35 @@ export class RetryExhaustedError extends Error {
   }
 }
 
+/**
+ * Thrown when a resilient operation is cancelled through a caller-supplied
+ * {@link AbortSignal}.
+ *
+ * Cancellation is deliberately distinct from failure: it is never retried, and
+ * a circuit breaker does not count it against a dependency (a caller walking
+ * away says nothing about the dependency's health).
+ */
+export class AbortError extends Error {
+  constructor(message = 'Operation aborted') {
+    super(message)
+    this.name = 'AbortError'
+    Object.setPrototypeOf(this, AbortError.prototype)
+  }
+}
+
+/**
+ * Thrown when retry or circuit-breaker options are nonsensical (for example a
+ * negative retry count or a zero failure threshold). Surfacing these eagerly
+ * turns a silent mis-configuration into an obvious, actionable error.
+ */
+export class ConfigError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ConfigError'
+    Object.setPrototypeOf(this, ConfigError.prototype)
+  }
+}
+
 function describeError(error: unknown): string {
   if (error instanceof Error) return error.message
   return String(error)

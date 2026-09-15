@@ -1,20 +1,13 @@
 import { RetryOptions } from '@/models/resilience'
-import { RetryExhaustedError, TimeoutError } from '@/services/resilience-errors'
+import {
+  AbortError,
+  RetryExhaustedError,
+  TimeoutError,
+} from '@/services/resilience-errors'
+import { resolveRetryOptions } from '@/services/resilience-config'
+import { abortableSleep, safeInvoke } from '@/services/resilience-util'
 
-/**
- * Default retry policy: up to 3 retries, starting at 100ms and doubling up to
- * a 2s ceiling, with full jitter and no per-attempt timeout. Every error is
- * treated as retryable unless a custom `shouldRetry` is supplied.
- */
-export const DEFAULT_RETRY_OPTIONS: RetryOptions = {
-  maxRetries: 3,
-  initialDelayMs: 100,
-  maxDelayMs: 2000,
-  backoffFactor: 2,
-  jitter: true,
-  timeoutMs: 0,
-  shouldRetry: () => true,
-}
+export { DEFAULT_RETRY_OPTIONS } from '@/services/resilience-config'
 
 /**
  * Computes the backoff delay for a given retry, before jitter is optionally
@@ -51,18 +44,27 @@ export interface TimeoutOptions {
   timeoutMs: number
   /** Optional hook fired when the timeout elapses, before rejection. */
   onTimeout?: () => void
+  /**
+   * Optional external abort signal. When it fires, the in-flight task is
+   * aborted and the call rejects with an {@link AbortError} (distinct from a
+   * {@link TimeoutError}), regardless of how the task itself chose to reject.
+   */
+  signal?: AbortSignal
   setTimeoutFn?: typeof setTimeout
   clearTimeoutFn?: typeof clearTimeout
 }
 
 /**
- * Runs a task with a timeout. The task receives an {@link AbortSignal} that is
- * aborted when the timeout elapses, so cancellable work (such as `fetch`) can
- * stop promptly instead of leaking.
+ * Runs a task with a timeout and/or an external abort signal. The task receives
+ * an {@link AbortSignal} that is aborted when either the timeout elapses or the
+ * external signal fires, so cancellable work (such as `fetch`) can stop
+ * promptly instead of leaking.
  *
  * When the timeout fires, the returned promise rejects with a
- * {@link TimeoutError}. When `timeoutMs <= 0`, the task runs without a timer
- * and is still handed a (never-aborted) signal for a uniform call shape.
+ * {@link TimeoutError}. When the external signal fires, it rejects with an
+ * {@link AbortError}. When `timeoutMs <= 0` and no signal is supplied, the task
+ * runs without a timer and is still handed a (never-aborted) signal for a
+ * uniform call shape.
  *
  * @param task - A function that starts the work and returns its promise.
  * @param options - Timeout configuration.
@@ -79,30 +81,51 @@ export async function withTimeout<T>(
 ): Promise<T> {
   const setTimer = options.setTimeoutFn ?? setTimeout
   const clearTimer = options.clearTimeoutFn ?? clearTimeout
+  const external = options.signal
 
-  if (!Number.isFinite(options.timeoutMs) || options.timeoutMs <= 0) {
-    const controller = new AbortController()
-    return task(controller.signal)
-  }
+  // Fail fast: an already-aborted caller shouldn't even start the work.
+  if (external?.aborted) throw new AbortError()
 
   const controller = new AbortController()
+  let unlink: (() => void) | undefined
+  if (external) {
+    const onAbort = () => controller.abort()
+    external.addEventListener('abort', onAbort, { once: true })
+    unlink = () => external.removeEventListener('abort', onAbort)
+  }
+
+  const hasTimeout = Number.isFinite(options.timeoutMs) && options.timeoutMs > 0
   let timer: ReturnType<typeof setTimeout> | undefined
 
-  const timeoutPromise = new Promise<never>((_resolve, reject) => {
-    timer = setTimer(() => {
-      // Reject before aborting so the race settles on the TimeoutError. If the
-      // task rejects synchronously in response to the abort, that rejection
-      // would otherwise win the race and mask the real cause (a timeout).
-      options.onTimeout?.()
-      reject(new TimeoutError(options.timeoutMs))
-      controller.abort()
-    }, options.timeoutMs)
-  })
+  const races: Array<Promise<T>> = [task(controller.signal)]
+  if (hasTimeout) {
+    races.push(
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimer(() => {
+          // Reject before aborting so the race settles on the TimeoutError. If
+          // the task rejects synchronously in response to the abort, that
+          // rejection would otherwise win the race and mask the real cause.
+          safeInvoke(options.onTimeout)
+          reject(new TimeoutError(options.timeoutMs))
+          controller.abort()
+        }, options.timeoutMs)
+      }),
+    )
+  }
 
   try {
-    return await Promise.race([task(controller.signal), timeoutPromise])
+    return await Promise.race(races)
+  } catch (error) {
+    // A caller-initiated abort surfaces as our AbortError no matter how the
+    // underlying task chose to reject once its signal fired. A timeout keeps
+    // its own error since the external signal is not the cause.
+    if (external?.aborted && !(error instanceof TimeoutError)) {
+      throw new AbortError()
+    }
+    throw error
   } finally {
     if (timer !== undefined) clearTimer(timer)
+    unlink?.()
   }
 }
 
@@ -135,25 +158,29 @@ export async function retryWithBackoff<T>(
   task: (signal: AbortSignal) => Promise<T>,
   options: Partial<RetryOptions> = {},
 ): Promise<T> {
-  const opts: RetryOptions = { ...DEFAULT_RETRY_OPTIONS, ...options }
+  const opts = resolveRetryOptions(options)
   const sleep = opts.sleep ?? defaultSleep
   const random = opts.random ?? Math.random
+  const signal = opts.signal
   const maxAttempts = Math.max(1, opts.maxRetries + 1)
 
   let lastError: unknown
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    // Honor a cancellation that arrived before this attempt started.
+    if (signal?.aborted) throw new AbortError()
+
     try {
-      if (opts.timeoutMs > 0) {
-        return await withTimeout(task, {
-          timeoutMs: opts.timeoutMs,
-          setTimeoutFn: opts.setTimeoutFn,
-          clearTimeoutFn: opts.clearTimeoutFn,
-        })
-      }
-      const controller = new AbortController()
-      return await task(controller.signal)
+      return await withTimeout(task, {
+        timeoutMs: opts.timeoutMs,
+        signal,
+        setTimeoutFn: opts.setTimeoutFn,
+        clearTimeoutFn: opts.clearTimeoutFn,
+      })
     } catch (error) {
+      // Cancellation is terminal: never retry it and never wrap it.
+      if (error instanceof AbortError) throw error
+
       lastError = error
       const isLastAttempt = attempt >= maxAttempts
 
@@ -168,8 +195,9 @@ export async function retryWithBackoff<T>(
       }
 
       const delay = computeBackoffDelay(attempt, opts, random)
-      opts.onRetry?.(error, attempt, delay)
-      await sleep(delay)
+      safeInvoke(() => opts.onRetry?.(error, attempt, delay))
+      // May reject with AbortError if the signal fires mid-backoff.
+      await abortableSleep(delay, sleep, signal)
     }
   }
 
