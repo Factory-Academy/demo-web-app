@@ -1,0 +1,51 @@
+name: Sync issue labels
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/labels.json
+      - .github/workflows/label-sync.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Validate label definitions
+        run: |
+          jq -e '
+            (.version == 1) and
+            (.labels | type == "array" and length > 0) and
+            ((.labels | map(.name) | length) == (.labels | map(.name) | unique | length)) and
+            (.labels | all(
+              (.name | type == "string" and length > 0) and
+              (.description | type == "string" and length > 0) and
+              (.color | type == "string" and test("^[0-9a-fA-F]{6}$"))
+            ))
+          ' .github/labels.json
+
+      - name: Create or update labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          jq -c '.labels[]' .github/labels.json | while read -r label; do
+            name="$(jq -r '.name' <<< "$label")"
+            color="$(jq -r '.color' <<< "$label")"
+            description="$(jq -r '.description' <<< "$label")"
+
+            if gh label view "$name" >/dev/null 2>&1; then
+              gh label edit "$name" --color "$color" --description "$description"
+            else
+              gh label create "$name" --color "$color" --description "$description"
+            fi
+          done

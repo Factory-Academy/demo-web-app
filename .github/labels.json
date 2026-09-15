@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "labels": [
+    {
+      "name": "priority: p0",
+      "color": "b60205",
+      "description": "Critical: active security issue, data loss, or unusable demo"
+    },
+    {
+      "name": "priority: p1",
+      "color": "d93f0b",
+      "description": "High: major behavior is broken and needs prompt attention"
+    },
+    {
+      "name": "priority: p2",
+      "color": "fbca04",
+      "description": "Normal: planned work with meaningful impact"
+    },
+    {
+      "name": "priority: p3",
+      "color": "0e8a16",
+      "description": "Low: minor improvement with no immediate impact"
+    },
+    {
+      "name": "type: bug",
+      "color": "d73a4a",
+      "description": "Existing behavior does not match the intended result"
+    },
+    {
+      "name": "type: feature",
+      "color": "a2eeef",
+      "description": "New behavior or capability"
+    },
+    {
+      "name": "type: chore",
+      "color": "c5def5",
+      "description": "Maintenance, dependency, or repository housekeeping"
+    },
+    {
+      "name": "type: documentation",
+      "color": "0075ca",
+      "description": "Documentation-only work"
+    },
+    {
+      "name": "area: frontend",
+      "color": "5319e7",
+      "description": "Pages, React components, styling, or accessibility"
+    },
+    {
+      "name": "area: api",
+      "color": "1d76db",
+      "description": "Next.js API routes and request or response behavior"
+    },
+    {
+      "name": "area: domain",
+      "color": "0052cc",
+      "description": "Models, validation, and service-layer business logic"
+    },
+    {
+      "name": "area: testing",
+      "color": "bfdadc",
+      "description": "Unit, integration, or interactive QA coverage"
+    },
+    {
+      "name": "area: documentation",
+      "color": "0e8a16",
+      "description": "README, agent guidance, or demo documentation"
+    },
+    {
+      "name": "area: tooling",
+      "color": "6f42c1",
+      "description": "Build, lint, CI, or development tooling"
+    },
+    {
+      "name": "area: demo",
+      "color": "e99695",
+      "description": "Template customization markers and live demo workflow"
+    }
+  ]
+}
