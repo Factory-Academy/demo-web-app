@@ -1,0 +1,25 @@
+.github/workflows/unit-tests.yml
+  1255c46b1faa4e7c 1-25
+.gitignore
+  1255c46b1faa4e7c 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "2d86363aed0e83cffa951e0e2c6bf43f68be5633",
+  "prompts": {
+    "1255c46b1faa4e7c": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "9451f11c-a2a3-4108-85a7-f5819d188178",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Aman Bangad",
+      "messages": [],
+      "total_additions": 26,
+      "total_deletions": 0,
+      "accepted_lines": 26,
+      "overriden_lines": 0
+    }
+  }
+}
