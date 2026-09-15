@@ -1,6 +1,8 @@
 import { Item } from '@/models/item'
 import { IFeatureFlagProvider } from '@/models/feature-flag'
 import { featureFlags } from '@/services/feature-flags'
+import { AppEventMap, IEventEmitter } from '@/models/event'
+import { appEvents } from '@/services/event-emitter'
 
 /**
  * Service for managing item operations including priority calculation and validation.
@@ -22,9 +24,14 @@ import { featureFlags } from '@/services/feature-flags'
  */
 export class ItemService {
   private readonly flags: IFeatureFlagProvider
+  private readonly events: IEventEmitter<AppEventMap>
 
-  constructor(flags?: IFeatureFlagProvider) {
+  constructor(
+    flags?: IFeatureFlagProvider,
+    events?: IEventEmitter<AppEventMap>
+  ) {
     this.flags = flags || featureFlags
+    this.events = events || appEvents
   }
   /**
    * Calculates the priority level of an item based on its status and age.
@@ -44,10 +51,15 @@ export class ItemService {
     if (record.status === 'urgent') baseScore += 50
     if (ageDays > 30) baseScore += ageDays * 0.5
 
-    if (baseScore >= 80) return 'critical'
-    if (baseScore >= 50) return 'high'
-    if (baseScore >= 20) return 'medium'
-    return 'low'
+    let priority: 'critical' | 'high' | 'medium' | 'low'
+    if (baseScore >= 80) priority = 'critical'
+    else if (baseScore >= 50) priority = 'high'
+    else if (baseScore >= 20) priority = 'medium'
+    else priority = 'low'
+
+    this.events.emit('item:priority_calculated', { item: record, priority })
+
+    return priority
   }
 
   /**
@@ -55,6 +67,9 @@ export class ItemService {
    * 
    * When FEATURE_FLAG_ENHANCED_VALIDATION is enabled, applies additional
    * validation rules for name length and description content.
+   *
+   * Emits an `item:validated` event with the outcome so listeners (for example
+   * audit logging or metrics) can react without changing this method.
    *
    * @param data - Partial item data to validate
    * @returns Validation result with valid flag and array of error messages
@@ -95,6 +110,9 @@ export class ItemService {
       }
     }
     
-    return { valid: errors.length === 0, errors }
+    const valid = errors.length === 0
+    this.events.emit('item:validated', { data, valid, errors })
+
+    return { valid, errors }
   }
 }
