@@ -1,5 +1,10 @@
 import { ItemService } from '../src/services/item-service'
 import { IFeatureFlagProvider } from '../src/models/feature-flag'
+import {
+  AgeWeightedStrategy,
+  StatusWeightedStrategy,
+} from '../src/services/priority-strategies'
+import { MILLIS_PER_DAY } from '../src/services/priority-scoring'
 
 // Mock feature flag provider for testing
 class MockFeatureFlagProvider implements IFeatureFlagProvider {
@@ -29,6 +34,43 @@ describe('ItemService', () => {
       const item = { name: 'Task', status: 'urgent' as const, createdAt: new Date() }
       const priority = service.calculatePriority(item)
       expect(['high', 'critical']).toContain(priority)
+    })
+  })
+
+  describe('priority strategy integration', () => {
+    test('defaults to status-weighted behaviour when no strategy is injected', () => {
+      const service = new ItemService()
+      const item = { name: 'Task', status: 'urgent' as const, createdAt: new Date() }
+      // Status-weighted scores a fresh urgent item at 50 → 'high'.
+      expect(service.calculatePriority(item)).toBe('high')
+    })
+
+    test('uses an injected strategy instead of the default', () => {
+      const staleItem = {
+        name: 'Backlog item',
+        status: 'pending' as const,
+        createdAt: new Date(Date.now() - 40 * MILLIS_PER_DAY),
+      }
+
+      const statusService = new ItemService(undefined, new StatusWeightedStrategy())
+      const ageService = new ItemService(undefined, new AgeWeightedStrategy())
+
+      // The same item is prioritized differently depending on the strategy.
+      expect(ageService.calculatePriority(staleItem)).toBe('critical')
+      expect(statusService.calculatePriority(staleItem)).not.toBe('critical')
+    })
+
+    test('evaluatePriority exposes the score and reasons', () => {
+      const service = new ItemService(undefined, new StatusWeightedStrategy())
+      const result = service.evaluatePriority({
+        name: 'Urgent task',
+        status: 'urgent' as const,
+        createdAt: new Date(),
+      })
+
+      expect(result.level).toBe('high')
+      expect(result.score).toBe(50)
+      expect(result.reasons.join(' ')).toContain('urgent')
     })
   })
 
