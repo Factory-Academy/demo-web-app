@@ -1,5 +1,9 @@
+import React from 'react'
+import { render, screen } from '@testing-library/react'
 import { ItemService } from '../src/services/item-service'
+import { ItemList } from '../src/components/item-list'
 import { IFeatureFlagProvider } from '../src/models/feature-flag'
+import { Item } from '../src/models/item'
 
 // Mock feature flag provider for testing
 class MockFeatureFlagProvider implements IFeatureFlagProvider {
@@ -109,5 +113,39 @@ describe('ItemService', () => {
       expect(result.valid).toBe(true)
       expect(result.errors.length).toBe(0)
     })
+  })
+})
+
+describe('ItemList', () => {
+  const item: Item = {
+    id: '1',
+    name: 'Test item',
+    description: 'Shown in full mode',
+    status: 'active',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  }
+
+  test('renders description by default', () => {
+    render(React.createElement(ItemList, { items: [item] }))
+    expect(screen.queryByText('Shown in full mode')).not.toBeNull()
+  })
+
+  test('hides description in compact mode', () => {
+    render(React.createElement(ItemList, { items: [item], compact: true }))
+    expect(screen.queryByText('Shown in full mode')).toBeNull()
+  })
+
+  test('does not render description when it is only whitespace', () => {
+    const itemWithBlankDescription: Item = {
+      ...item,
+      id: '2',
+      description: '   ',
+    }
+
+    const { container } = render(
+      React.createElement(ItemList, { items: [itemWithBlankDescription] })
+    )
+    expect(container.querySelector('p.text-sm.text-gray-600.mt-1')).toBeNull()
   })
 })
