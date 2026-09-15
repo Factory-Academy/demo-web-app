@@ -44,7 +44,16 @@ export function registerPriorityStrategy(
   kind: string,
   build: StrategyBuilder
 ): void {
-  registry.set(kind, build)
+  const normalizedKind = kind?.trim()
+  if (!normalizedKind) {
+    throw new Error('Cannot register a priority strategy under an empty kind.')
+  }
+  if (typeof build !== 'function') {
+    throw new Error(
+      `Strategy builder for '${normalizedKind}' must be a function.`
+    )
+  }
+  registry.set(normalizedKind, build)
 }
 
 /**
@@ -59,10 +68,12 @@ export function availableStrategies(): string[] {
 /**
  * Creates a priority strategy instance for the requested kind.
  *
- * @param kind - The strategy identifier (defaults to {@link DEFAULT_PRIORITY_STRATEGY})
+ * @param kind - The strategy identifier (defaults to {@link DEFAULT_PRIORITY_STRATEGY}).
+ *   Surrounding whitespace is trimmed before lookup.
  * @returns A fresh strategy instance
- * @throws {Error} If the kind has not been registered. The message lists the
- *   available kinds to aid debugging.
+ * @throws {Error} If the kind is empty/blank, has not been registered, or its
+ *   builder returns no strategy. The message lists the available kinds to aid
+ *   debugging.
  *
  * @example
  * const strategy = createPriorityStrategy('age-weighted')
@@ -71,12 +82,27 @@ export function availableStrategies(): string[] {
 export function createPriorityStrategy(
   kind: string = DEFAULT_PRIORITY_STRATEGY
 ): PriorityStrategy {
-  const build = registry.get(kind)
-  if (!build) {
+  const normalizedKind = kind?.trim()
+  if (!normalizedKind) {
     throw new Error(
-      `Unknown priority strategy '${kind}'. ` +
+      `Cannot create a priority strategy from an empty kind. ` +
         `Available strategies: ${availableStrategies().join(', ')}.`
     )
   }
-  return build()
+
+  const build = registry.get(normalizedKind)
+  if (!build) {
+    throw new Error(
+      `Unknown priority strategy '${normalizedKind}'. ` +
+        `Available strategies: ${availableStrategies().join(', ')}.`
+    )
+  }
+
+  const strategy = build()
+  if (!strategy) {
+    throw new Error(
+      `The builder registered for '${normalizedKind}' returned no strategy.`
+    )
+  }
+  return strategy
 }

@@ -60,3 +60,23 @@ export function scoreToLevel(score: number): PriorityLevel {
   }
   return 'low'
 }
+
+/**
+ * Normalizes a raw status value for comparison by strategies.
+ *
+ * Real records carry inconsistently cased and padded statuses (e.g. `'Urgent'`,
+ * `' PENDING '`). Strategies match on exact tokens, so normalization is kept in
+ * one place: the result is trimmed and lower-cased, and a missing or blank
+ * status collapses to `undefined` so callers can treat "no meaningful status"
+ * uniformly.
+ *
+ * @param status - The raw status, if any
+ * @returns The trimmed, lower-cased status, or `undefined` when absent or blank
+ */
+export function normalizeStatus(
+  status: string | null | undefined
+): string | undefined {
+  if (status === undefined || status === null) return undefined
+  const normalized = status.trim().toLowerCase()
+  return normalized.length > 0 ? normalized : undefined
+}

@@ -43,6 +43,27 @@ describe('createPriorityStrategy', () => {
       /Available strategies: .*status-weighted/
     )
   })
+
+  test('trims surrounding whitespace before resolving a kind', () => {
+    expect(createPriorityStrategy('  age-weighted  ')).toBeInstanceOf(
+      AgeWeightedStrategy
+    )
+  })
+
+  test('throws for an empty or blank kind', () => {
+    expect(() => createPriorityStrategy('')).toThrow(/empty kind/)
+    expect(() => createPriorityStrategy('   ')).toThrow(/empty kind/)
+  })
+
+  test('throws when a builder returns no strategy', () => {
+    registerPriorityStrategy(
+      'empty-builder',
+      () => undefined as unknown as PriorityStrategy
+    )
+    expect(() => createPriorityStrategy('empty-builder')).toThrow(
+      /returned no strategy/
+    )
+  })
 })
 
 describe('availableStrategies', () => {
@@ -78,5 +99,27 @@ describe('registerPriorityStrategy', () => {
     const replacement = new StatusWeightedStrategy()
     registerPriorityStrategy('override-me', () => replacement)
     expect(createPriorityStrategy('override-me')).toBe(replacement)
+  })
+
+  test('trims the kind so registered and resolved names match', () => {
+    const strategy = new StatusWeightedStrategy()
+    registerPriorityStrategy('  padded-kind  ', () => strategy)
+    expect(availableStrategies()).toContain('padded-kind')
+    expect(createPriorityStrategy('padded-kind')).toBe(strategy)
+  })
+
+  test('rejects registering under an empty or blank kind', () => {
+    expect(() =>
+      registerPriorityStrategy('   ', () => new StatusWeightedStrategy())
+    ).toThrow(/empty kind/)
+  })
+
+  test('rejects a non-function builder', () => {
+    expect(() =>
+      registerPriorityStrategy(
+        'bad-builder',
+        null as unknown as () => PriorityStrategy
+      )
+    ).toThrow(/must be a function/)
   })
 })

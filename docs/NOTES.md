@@ -103,9 +103,27 @@ unchanged and keep the legacy scoring because the default strategy is
 - Missing / unparseable / future `createdAt` all collapse to age `0` rather than
   `NaN` or negative ages that would corrupt a score.
 - Missing `status` contributes nothing (no bonus, no crash).
+- `status` is normalized (trimmed + lower-cased) before matching, so `'Urgent'`,
+  `' urgent '`, and `'URGENT'` all score the same, and a blank/whitespace-only
+  status collapses to "no status". Normalization lives in one shared helper
+  (`normalizeStatus`) so every strategy matches tokens identically.
 - Threshold boundaries (`>= 80/50/20`) are pinned by tests, including just-below
   values and negative / `NaN` scores mapping to `low`.
-- Unknown factory kinds throw with the list of valid kinds.
+- Factory kinds are trimmed before lookup; empty/blank kinds are rejected on both
+  register and create, unknown kinds throw with the list of valid kinds, and a
+  builder that returns nothing throws rather than yielding an undefined strategy.
+
+## Follow-up: review feedback
+
+A reviewer flagged that status matching was case- and whitespace-sensitive:
+records carrying `'Urgent'` or `' pending '` (common in real data) silently
+missed their status bonus. The fix centralizes status normalization in
+`normalizeStatus` (in `priority-scoring.ts`) and routes both strategies through
+it, so matching is consistent and defined in exactly one place. The same pass
+hardened the factory's input validation (empty/blank kinds and builders that
+return nothing now fail loudly). Tests were extended to cover mixed-case and
+padded statuses in both strategies, the shared helper directly, and the new
+factory guards.
 
 ## Tests
 

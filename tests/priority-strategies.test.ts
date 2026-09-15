@@ -76,6 +76,20 @@ describe('StatusWeightedStrategy', () => {
     expect(result.reasons[1]).toContain('aged')
   })
 
+  test('matches urgent status case-insensitively and ignores surrounding whitespace', () => {
+    const result = strategy.evaluate({ status: '  URGENT ', createdAt: NOW }, NOW)
+    expect(result.score).toBe(50)
+    expect(result.level).toBe('high')
+    expect(result.reasons[0]).toContain('urgent')
+  })
+
+  test('does not elevate a blank status', () => {
+    const result = strategy.evaluate({ status: '   ', createdAt: NOW }, NOW)
+    expect(result.score).toBe(0)
+    expect(result.level).toBe('low')
+    expect(result.reasons).toContain('no elevating factors')
+  })
+
   test('honours custom weighting parameters', () => {
     // urgentBonus 100, grace 0 days, 1 point/day → 100 + 5 = 105
     const custom = new StatusWeightedStrategy(100, 0, 1)
@@ -151,6 +165,26 @@ describe('AgeWeightedStrategy', () => {
     // which only rewards 'urgent', leaves it far lower.
     expect(ageResult.level).toBe('critical')
     expect(statusResult.level).not.toBe('critical')
+  })
+
+  test('applies the status bonus case-insensitively and ignores surrounding whitespace', () => {
+    // 5 * 2 + 10 (pending) = 20
+    const result = strategy.evaluate(
+      { status: ' Pending ', createdAt: daysAgo(5) },
+      NOW
+    )
+    expect(result.score).toBe(20)
+    expect(result.reasons.some((r) => r.includes("status 'pending'"))).toBe(true)
+  })
+
+  test('gives no bonus for a blank status', () => {
+    // 3 * 2 = 6, blank status contributes nothing
+    const result = strategy.evaluate(
+      { status: '   ', createdAt: daysAgo(3) },
+      NOW
+    )
+    expect(result.score).toBe(6)
+    expect(result.reasons.some((r) => r.startsWith('status'))).toBe(false)
   })
 
   test('honours a custom points-per-day rate', () => {

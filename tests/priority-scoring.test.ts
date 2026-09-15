@@ -1,6 +1,7 @@
 import {
   MILLIS_PER_DAY,
   ageInDays,
+  normalizeStatus,
   scoreToLevel,
 } from '../src/services/priority-scoring'
 
@@ -69,5 +70,27 @@ describe('scoreToLevel', () => {
 
   test('treats NaN as low', () => {
     expect(scoreToLevel(NaN)).toBe('low')
+  })
+})
+
+describe('normalizeStatus', () => {
+  test('lower-cases and trims surrounding whitespace', () => {
+    expect(normalizeStatus('  Urgent ')).toBe('urgent')
+    expect(normalizeStatus('PENDING')).toBe('pending')
+    expect(normalizeStatus('\tActive\n')).toBe('active')
+  })
+
+  test('leaves an already-normalized status unchanged', () => {
+    expect(normalizeStatus('active')).toBe('active')
+  })
+
+  test('returns undefined for a missing status', () => {
+    expect(normalizeStatus(undefined)).toBeUndefined()
+    expect(normalizeStatus(null)).toBeUndefined()
+  })
+
+  test('returns undefined for a blank status', () => {
+    expect(normalizeStatus('')).toBeUndefined()
+    expect(normalizeStatus('   ')).toBeUndefined()
   })
 })

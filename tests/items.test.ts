@@ -60,6 +60,18 @@ describe('ItemService', () => {
       expect(statusService.calculatePriority(staleItem)).not.toBe('critical')
     })
 
+    test('normalizes a messy status before scoring', () => {
+      const service = new ItemService(undefined, new StatusWeightedStrategy())
+      const result = service.evaluatePriority({
+        name: 'Urgent task',
+        status: ' URGENT ' as unknown as string,
+        createdAt: new Date(),
+      })
+
+      expect(result.level).toBe('high')
+      expect(result.score).toBe(50)
+    })
+
     test('evaluatePriority exposes the score and reasons', () => {
       const service = new ItemService(undefined, new StatusWeightedStrategy())
       const result = service.evaluatePriority({

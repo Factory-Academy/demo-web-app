@@ -3,7 +3,11 @@ import {
   PriorityResult,
   PriorityStrategy,
 } from '@/models/priority-strategy'
-import { ageInDays, scoreToLevel } from '@/services/priority-scoring'
+import {
+  ageInDays,
+  normalizeStatus,
+  scoreToLevel,
+} from '@/services/priority-scoring'
 
 /**
  * Status-weighted priority strategy.
@@ -40,7 +44,7 @@ export class StatusWeightedStrategy implements PriorityStrategy {
     const reasons: string[] = []
     let score = 0
 
-    if (item.status === 'urgent') {
+    if (normalizeStatus(item.status) === 'urgent') {
       score += this.urgentBonus
       reasons.push(`status 'urgent' (+${this.urgentBonus})`)
     }
@@ -103,12 +107,13 @@ export class AgeWeightedStrategy implements PriorityStrategy {
       reasons.push(`aged ${ageDays}d (+${agingPoints})`)
     }
 
-    const statusBonus = item.status
-      ? AgeWeightedStrategy.STATUS_BONUS[item.status]
+    const status = normalizeStatus(item.status)
+    const statusBonus = status
+      ? AgeWeightedStrategy.STATUS_BONUS[status]
       : undefined
     if (statusBonus) {
       score += statusBonus
-      reasons.push(`status '${item.status}' (+${statusBonus})`)
+      reasons.push(`status '${status}' (+${statusBonus})`)
     }
 
     if (reasons.length === 0) {
