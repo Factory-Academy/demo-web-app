@@ -135,4 +135,17 @@ describe('ItemList', () => {
     render(React.createElement(ItemList, { items: [item], compact: true }))
     expect(screen.queryByText('Shown in full mode')).toBeNull()
   })
+
+  test('does not render description when it is only whitespace', () => {
+    const itemWithBlankDescription: Item = {
+      ...item,
+      id: '2',
+      description: '   ',
+    }
+
+    const { container } = render(
+      React.createElement(ItemList, { items: [itemWithBlankDescription] })
+    )
+    expect(container.querySelector('p.text-sm.text-gray-600.mt-1')).toBeNull()
+  })
 })
