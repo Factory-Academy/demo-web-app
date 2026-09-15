@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "test": "jest",
+    "test:coverage": "jest --coverage --runInBand",
     "lint": "next lint"
   },
   "dependencies": {
