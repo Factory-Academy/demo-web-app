@@ -1,6 +1,12 @@
 import { Item } from '@/models/item'
 import { IFeatureFlagProvider } from '@/models/feature-flag'
 import { featureFlags } from '@/services/feature-flags'
+import {
+  PriorityLevel,
+  PriorityResult,
+  PriorityStrategy,
+} from '@/models/priority-strategy'
+import { createPriorityStrategy } from '@/services/priority-strategy-factory'
 
 /**
  * Service for managing item operations including priority calculation and validation.
@@ -22,12 +28,20 @@ import { featureFlags } from '@/services/feature-flags'
  */
 export class ItemService {
   private readonly flags: IFeatureFlagProvider
+  private readonly priorityStrategy: PriorityStrategy
 
-  constructor(flags?: IFeatureFlagProvider) {
+  /**
+   * @param flags - Feature flag provider (defaults to the shared env provider)
+   * @param priorityStrategy - Strategy used to compute item priority. Defaults
+   *   to the factory's default ('status-weighted'), which preserves the
+   *   historical scoring behaviour.
+   */
+  constructor(flags?: IFeatureFlagProvider, priorityStrategy?: PriorityStrategy) {
     this.flags = flags || featureFlags
+    this.priorityStrategy = priorityStrategy || createPriorityStrategy()
   }
   /**
-   * Calculates the priority level of an item based on its status and age.
+   * Calculates the priority level of an item using the configured strategy.
    *
    * @param record - The item record to calculate priority for
    * @returns Priority level: 'critical' (score >= 80), 'high' (>= 50), 'medium' (>= 20), or 'low'
@@ -36,18 +50,22 @@ export class ItemService {
    * const item = { name: 'Bug Fix', status: 'urgent', createdAt: new Date('2026-07-01') }
    * const priority = service.calculatePriority(item) // Returns 'critical' or 'high'
    */
-  calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
-    const ageDays = Math.floor(ageMs / 86400000)
-    let baseScore = 0
+  calculatePriority(record: Item): PriorityLevel {
+    return this.priorityStrategy.evaluate(record).level
+  }
 
-    if (record.status === 'urgent') baseScore += 50
-    if (ageDays > 30) baseScore += ageDays * 0.5
-
-    if (baseScore >= 80) return 'critical'
-    if (baseScore >= 50) return 'high'
-    if (baseScore >= 20) return 'medium'
-    return 'low'
+  /**
+   * Evaluates an item's priority and returns the full result, including the
+   * raw score and the reasons that contributed to it.
+   *
+   * Use this when the caller needs to explain or audit a priority decision;
+   * use {@link ItemService.calculatePriority} when only the level is needed.
+   *
+   * @param record - The item record to evaluate
+   * @returns The level, raw score, and contributing reasons
+   */
+  evaluatePriority(record: Item): PriorityResult {
+    return this.priorityStrategy.evaluate(record)
   }
 
   /**
