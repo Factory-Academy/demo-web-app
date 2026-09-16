@@ -45,4 +45,25 @@ describe('ItemList', () => {
     render(<ItemList items={[]} />)
     expect(screen.getByText('No items found.')).toBeInTheDocument()
   })
+
+  test('renders empty state when items is null', () => {
+    render(<ItemList items={null as any} />)
+    expect(screen.getByText('No items found.')).toBeInTheDocument()
+  })
+
+  test('hides whitespace-only descriptions', () => {
+    const itemsWithWhitespace = [
+      {
+        id: '1',
+        name: 'Item 1',
+        description: '   ',
+        status: 'active',
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      },
+    ]
+    render(<ItemList items={itemsWithWhitespace} />)
+    expect(screen.getByText('Item 1')).toBeInTheDocument()
+    expect(screen.queryByText('   ')).not.toBeInTheDocument()
+  })
 })
