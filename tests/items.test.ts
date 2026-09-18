@@ -22,6 +22,16 @@ describe('safeReduce', () => {
     expect(result).toBe(0)
   })
 
+  test('handles null array', () => {
+    const result = safeReduce<number, number>(null, (acc, val) => acc + val, 42)
+    expect(result).toBe(42)
+  })
+
+  test('handles undefined array', () => {
+    const result = safeReduce<number, number>(undefined, (acc, val) => acc + val, 100)
+    expect(result).toBe(100)
+  })
+
   test('reduces non-empty array correctly', () => {
     const result = safeReduce<number, number>([1, 2, 3], (acc, val) => acc + val, 0)
     expect(result).toBe(6)
