@@ -23,6 +23,13 @@ export class ItemService {
     return appConfig.priorityLevel.LOW
   }
 
+  /**
+   * Validates partial item input and returns any validation errors.
+   *
+   * @example
+   * // Returns: { valid: false, errors: ['Invalid status'] }
+   * const result = new ItemService().validate({ name: 'Draft item', status: 'archived' })
+   */
   validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
     const errors: string[] = []
     if (!data.name?.trim()) errors.push('Name is required')

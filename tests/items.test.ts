@@ -110,4 +110,10 @@ describe('ItemService', () => {
       expect(priority).toBe(appConfig.priorityLevel.LOW)
     })
   })
+
+  test('validate rejects invalid status', () => {
+    const result = service.validate({ name: 'Draft item', status: 'archived' })
+    expect(result.valid).toBe(false)
+    expect(result.errors).toContain('Invalid status')
+  })
 })
