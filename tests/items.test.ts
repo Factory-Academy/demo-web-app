@@ -12,6 +12,12 @@ describe('ItemService', () => {
       expect(result.errors).toContain('Name is required')
     })
 
+    test('rejects whitespace-only name', () => {
+      const result = service.validate({ name: '   ' })
+      expect(result.valid).toBe(false)
+      expect(result.errors).toContain('Name is required')
+    })
+
     test('accepts valid item with active status', () => {
       const result = service.validate({ name: 'Test', status: appConfig.itemStatus.ACTIVE })
       expect(result.valid).toBe(true)
@@ -27,6 +33,18 @@ describe('ItemService', () => {
 
     test('rejects invalid status', () => {
       const result = service.validate({ name: 'Test', status: 'invalid-status' })
+      expect(result.valid).toBe(false)
+      expect(result.errors).toContain('Invalid status')
+    })
+
+    test('rejects whitespace-only status', () => {
+      const result = service.validate({ name: 'Test', status: '   ' })
+      expect(result.valid).toBe(false)
+      expect(result.errors).toContain('Invalid status')
+    })
+
+    test('rejects empty string status', () => {
+      const result = service.validate({ name: 'Test', status: '' })
       expect(result.valid).toBe(false)
       expect(result.errors).toContain('Invalid status')
     })

@@ -33,8 +33,11 @@ export class ItemService {
   validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
     const errors: string[] = []
     if (!data.name?.trim()) errors.push('Name is required')
-    if (data.status && !appConfig.validItemStatuses.includes(data.status as any)) {
-      errors.push('Invalid status')
+    if (data.status !== undefined) {
+      const trimmedStatus = typeof data.status === 'string' ? data.status.trim() : data.status
+      if (!trimmedStatus || !appConfig.validItemStatuses.includes(trimmedStatus as any)) {
+        errors.push('Invalid status')
+      }
     }
     return { valid: errors.length === 0, errors }
   }
