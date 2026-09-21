@@ -109,6 +109,26 @@ describe('ItemService', () => {
       const priority = service.calculatePriority(item)
       expect(priority).toBe(appConfig.priorityLevel.LOW)
     })
+
+    test('treats invalid dates as 0 days old', () => {
+      const item = createItem({ createdAt: 'invalid-date' })
+      const priority = service.calculatePriority(item)
+      expect(priority).toBe(appConfig.priorityLevel.LOW)
+    })
+
+    test('treats future dates as 0 days old', () => {
+      const futureDate = new Date(Date.now() + 10 * appConfig.ageScoring.MILLISECONDS_PER_DAY).toISOString()
+      const item = createItem({ createdAt: futureDate })
+      const priority = service.calculatePriority(item)
+      expect(priority).toBe(appConfig.priorityLevel.LOW)
+    })
+
+    test('treats urgent items with future dates as high priority', () => {
+      const futureDate = new Date(Date.now() + 10 * appConfig.ageScoring.MILLISECONDS_PER_DAY).toISOString()
+      const item = createItem({ status: appConfig.itemStatus.URGENT, createdAt: futureDate })
+      const priority = service.calculatePriority(item)
+      expect(priority).toBe(appConfig.priorityLevel.HIGH)
+    })
   })
 
   test('validate rejects invalid status', () => {

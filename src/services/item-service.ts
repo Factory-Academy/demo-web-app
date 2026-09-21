@@ -8,13 +8,15 @@ export class ItemService {
 
     const ageMs = Date.now() - new Date(record.createdAt).getTime()
     const ageDays = Math.floor(ageMs / ageScoring.MILLISECONDS_PER_DAY)
+    // Treat invalid or future dates as 0 days old
+    const validAgeDays = isNaN(ageDays) || ageDays < 0 ? 0 : ageDays
     let baseScore = 0
 
     if (record.status === appConfig.itemStatus.URGENT) {
       baseScore += ageScoring.URGENT_BASE_SCORE
     }
-    if (ageDays > ageScoring.THRESHOLD_DAYS) {
-      baseScore += ageDays * ageScoring.MULTIPLIER
+    if (validAgeDays > ageScoring.THRESHOLD_DAYS) {
+      baseScore += validAgeDays * ageScoring.MULTIPLIER
     }
 
     if (baseScore >= thresholds.CRITICAL) return appConfig.priorityLevel.CRITICAL
