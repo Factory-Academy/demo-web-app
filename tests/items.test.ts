@@ -70,7 +70,7 @@ describe('ItemService', () => {
       // Age multiplier: 0.5, so need 60 days old to get 30 points
       const item = createItem({
         status: appConfig.itemStatus.URGENT,
-        createdAt: new Date(Date.now() - 65 * 86400000).toISOString(), // 65 days old
+        createdAt: new Date(Date.now() - 65 * appConfig.ageScoring.MILLISECONDS_PER_DAY).toISOString(), // 65 days old
       })
       const priority = service.calculatePriority(item)
       expect(priority).toBe(appConfig.priorityLevel.CRITICAL)
@@ -79,7 +79,7 @@ describe('ItemService', () => {
     test('returns medium priority for old non-urgent items', () => {
       // Age: 35 days = 35 * 0.5 = 17.5 score (just under MEDIUM threshold of 20)
       const item = createItem({
-        createdAt: new Date(Date.now() - 50 * 86400000).toISOString(), // 50 days old
+        createdAt: new Date(Date.now() - 50 * appConfig.ageScoring.MILLISECONDS_PER_DAY).toISOString(), // 50 days old
       })
       const priority = service.calculatePriority(item)
       expect(priority).toBe(appConfig.priorityLevel.MEDIUM)
@@ -93,7 +93,7 @@ describe('ItemService', () => {
 
       // Non-urgent item 40 days old: 40*0.5 = 20 score = MEDIUM (threshold >= 20)
       const mediumItem = createItem({
-        createdAt: new Date(Date.now() - 40 * 86400000).toISOString(),
+        createdAt: new Date(Date.now() - 40 * appConfig.ageScoring.MILLISECONDS_PER_DAY).toISOString(),
       })
       expect(service.calculatePriority(mediumItem)).toBe(appConfig.priorityLevel.MEDIUM)
     })
