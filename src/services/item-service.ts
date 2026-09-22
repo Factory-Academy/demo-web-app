@@ -6,8 +6,12 @@ export class ItemService {
     const ageScoring = appConfig.ageScoring
     const thresholds = appConfig.priorityThresholds
 
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
-    const ageDays = Math.floor(ageMs / ageScoring.MILLISECONDS_PER_DAY)
+    // Use UTC dates to avoid timezone issues in day calculation
+    const now = new Date()
+    const created = new Date(record.createdAt)
+    const nowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    const createdUTC = Date.UTC(created.getUTCFullYear(), created.getUTCMonth(), created.getUTCDate())
+    const ageDays = Math.floor((nowUTC - createdUTC) / ageScoring.MILLISECONDS_PER_DAY)
     let baseScore = 0
 
     if (record.status === appConfig.itemStatus.URGENT) {

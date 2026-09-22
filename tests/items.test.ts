@@ -109,6 +109,27 @@ describe('ItemService', () => {
       const priority = service.calculatePriority(item)
       expect(priority).toBe(appConfig.priorityLevel.LOW)
     })
+
+    test('calculates age in days using UTC to avoid timezone issues', () => {
+      // Create a date exactly 31 calendar days ago at 23:59 UTC
+      const now = new Date()
+      const created = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() - 31,
+        23,
+        59,
+        59
+      ))
+      
+      const item = createItem({
+        createdAt: created.toISOString(),
+      })
+      
+      const priority = service.calculatePriority(item)
+      // 31 days old, non-urgent: 31 * 0.5 = 15.5 score = LOW (< 20)
+      expect(priority).toBe(appConfig.priorityLevel.LOW)
+    })
   })
 
   test('validate rejects invalid status', () => {
