@@ -1,8 +1,27 @@
 import { Item } from '@/models/item'
 import { appConfig, PriorityLevel } from '@/config/app-config'
+import { LRUCache } from '@/utils/lru-cache'
+
+export interface ItemServiceOptions {
+  priorityCache?: LRUCache<string, PriorityLevel>
+}
 
 export class ItemService {
+  private priorityCache?: LRUCache<string, PriorityLevel>
+
+  constructor(options?: ItemServiceOptions) {
+    this.priorityCache = options?.priorityCache
+  }
+
   calculatePriority(record: Item): PriorityLevel {
+    // Check cache first
+    const cacheKey = `${record.id}:${record.status}:${record.createdAt}`
+    if (this.priorityCache) {
+      const cached = this.priorityCache.get(cacheKey)
+      if (cached !== undefined) {
+        return cached
+      }
+    }
     const ageScoring = appConfig.ageScoring
     const thresholds = appConfig.priorityThresholds
 
@@ -17,10 +36,18 @@ export class ItemService {
       baseScore += ageDays * ageScoring.MULTIPLIER
     }
 
-    if (baseScore >= thresholds.CRITICAL) return appConfig.priorityLevel.CRITICAL
-    if (baseScore >= thresholds.HIGH) return appConfig.priorityLevel.HIGH
-    if (baseScore >= thresholds.MEDIUM) return appConfig.priorityLevel.MEDIUM
-    return appConfig.priorityLevel.LOW
+    let priority: PriorityLevel
+    if (baseScore >= thresholds.CRITICAL) priority = appConfig.priorityLevel.CRITICAL
+    else if (baseScore >= thresholds.HIGH) priority = appConfig.priorityLevel.HIGH
+    else if (baseScore >= thresholds.MEDIUM) priority = appConfig.priorityLevel.MEDIUM
+    else priority = appConfig.priorityLevel.LOW
+
+    // Store in cache
+    if (this.priorityCache) {
+      this.priorityCache.set(cacheKey, priority)
+    }
+
+    return priority
   }
 
   /**
