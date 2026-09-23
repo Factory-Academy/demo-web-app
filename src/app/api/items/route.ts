@@ -1,21 +1,26 @@
 import { NextResponse } from 'next/server'
 import { Item } from '@/models/item'
+import { ItemService } from '@/services/item-service'
 
 const items: Item[] = []
-let nextId = 1
+const itemService = new ItemService()
 
 export async function GET() {
   return NextResponse.json(items)
 }
 
 export async function POST(request: Request) {
-  const data = await request.json()
-  const item: Item = {
-    ...data,
-    id: String(nextId++),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+  try {
+    const data = await request.json()
+    const result = itemService.create(data)
+
+    if (!result.success) {
+      return NextResponse.json({ errors: result.errors }, { status: 400 })
+    }
+
+    items.push(result.data)
+    return NextResponse.json(result.data, { status: 201 })
+  } catch (error) {
+    return NextResponse.json({ errors: ['Invalid JSON payload'] }, { status: 400 })
   }
-  items.push(item)
-  return NextResponse.json(item, { status: 201 })
 }
