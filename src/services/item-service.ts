@@ -1,4 +1,20 @@
 import { Item } from '@/models/item'
+import { validate, compose, required, isString, minLength, maxLength, oneOf, ValidationResult } from '@/lib/validators'
+
+const itemValidationSchema = {
+  name: {
+    required: true,
+    validator: compose(isString, minLength(1), maxLength(200)),
+  },
+  description: {
+    required: false,
+    validator: compose(isString, maxLength(1000)),
+  },
+  status: {
+    required: false,
+    validator: oneOf(['active', 'pending', 'completed']),
+  },
+}
 
 export class ItemService {
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
@@ -15,12 +31,7 @@ export class ItemService {
     return 'low'
   }
 
-  validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
-    const errors: string[] = []
-    if (!data.name?.trim()) errors.push('Name is required')
-    if (data.status && !['active', 'pending', 'completed'].includes(data.status)) {
-      errors.push('Invalid status')
-    }
-    return { valid: errors.length === 0, errors }
+  validate(data: Partial<Item>): ValidationResult {
+    return validate(data, itemValidationSchema)
   }
 }
