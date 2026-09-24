@@ -23,4 +23,11 @@ export class ItemService {
     }
     return { valid: errors.length === 0, errors }
   }
+
+  reduceItems<T>(items: Item[], reducer: (acc: T, item: Item) => T, initialValue: T): T {
+    if (items.length === 0) {
+      return initialValue
+    }
+    return items.reduce(reducer, initialValue)
+  }
 }
