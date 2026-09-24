@@ -2,8 +2,15 @@ import { Item } from '@/models/item'
 
 export class ItemService {
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
-    const ageDays = Math.floor(ageMs / 86400000)
+    const now = new Date(Date.now())
+    const createdAt = new Date(record.createdAt)
+    const nowDateUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    const createdDateUtc = Date.UTC(
+      createdAt.getUTCFullYear(),
+      createdAt.getUTCMonth(),
+      createdAt.getUTCDate()
+    )
+    const ageDays = Math.max(0, Math.floor((nowDateUtc - createdDateUtc) / 86400000))
     let baseScore = 0
 
     if (record.status === 'urgent') baseScore += 50
