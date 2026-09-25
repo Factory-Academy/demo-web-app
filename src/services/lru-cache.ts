@@ -31,11 +31,12 @@ export class LruCache<K, V> {
       return undefined
     }
 
-    if (entry.expiresAt <= Date.now()) {
+    if (entry.expiresAt < Date.now()) {
       this.cache.delete(key)
       return undefined
     }
 
+    // Move to end to mark as recently used
     this.cache.delete(key)
     this.cache.set(key, entry)
     return entry.value
@@ -47,18 +48,20 @@ export class LruCache<K, V> {
       expiresAt: Date.now() + this.ttlMs,
     }
 
+    // Remove existing key if present to update it
     if (this.cache.has(key)) {
       this.cache.delete(key)
     }
 
-    this.cache.set(key, entry)
-
-    if (this.cache.size > this.maxSize) {
+    // Evict least recently used before adding if at capacity
+    if (this.cache.size >= this.maxSize) {
       const oldestKey = this.cache.keys().next().value as K | undefined
       if (oldestKey !== undefined) {
         this.cache.delete(oldestKey)
       }
     }
+
+    this.cache.set(key, entry)
   }
 
   evict(key: K): boolean {
