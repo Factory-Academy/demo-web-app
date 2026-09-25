@@ -22,6 +22,28 @@ export class ItemService {
     return 'low'
   }
 
+  /**
+   * Validates item data against required fields and business rules.
+   * 
+   * @param data - Partial item data to validate
+   * @returns Object containing validation status and error messages
+   * 
+   * @example
+   * ```typescript
+   * const service = new ItemService();
+   * 
+   * // Valid item
+   * const result = service.validate({ 
+   *   name: 'New Task', 
+   *   status: 'active' 
+   * });
+   * // Returns: { valid: true, errors: [] }
+   * 
+   * // Invalid item - missing name
+   * const invalid = service.validate({ name: '' });
+   * // Returns: { valid: false, errors: ['Name is required'] }
+   * ```
+   */
   validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
     const errors: string[] = []
     if (!data.name?.trim()) errors.push('Name is required')
