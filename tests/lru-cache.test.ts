@@ -37,4 +37,17 @@ describe('LruCache', () => {
     expect(cache.evict('a')).toBe(true)
     expect(cache.get('a')).toBeUndefined()
   })
+
+  test('evicts correctly when key is a falsy value', () => {
+    const cache = new LruCache<number, string>({ maxSize: 2, ttlMs: 1000 })
+    cache.set(0, 'value-zero')
+    cache.set(1, 'value-one')
+
+    cache.get(0)
+    cache.set(2, 'value-two')
+
+    expect(cache.get(0)).toBe('value-zero')
+    expect(cache.get(1)).toBeUndefined()
+    expect(cache.get(2)).toBe('value-two')
+  })
 })
