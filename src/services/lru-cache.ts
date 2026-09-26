@@ -109,9 +109,9 @@ export class LruCache<K, V> {
     this.cache.set(key, entry)
 
     if (this.cache.size > this.maxSize) {
-      const oldestKey = this.cache.keys().next().value as K | undefined
-      if (oldestKey !== undefined) {
-        this.cache.delete(oldestKey)
+      const firstEntry = this.cache.keys().next()
+      if (!firstEntry.done) {
+        this.cache.delete(firstEntry.value)
       }
     }
   }
