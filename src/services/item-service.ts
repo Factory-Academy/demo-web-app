@@ -15,10 +15,10 @@ export class ItemService {
     return 'low'
   }
 
-  validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
+  validate(item: Partial<Item>): { valid: boolean; errors: string[] } {
     const errors: string[] = []
-    if (!data.name?.trim()) errors.push('Name is required')
-    if (data.status && !['active', 'pending', 'completed'].includes(data.status)) {
+    if (!item.name?.trim()) errors.push('Name is required')
+    if (item.status && !['active', 'pending', 'completed'].includes(item.status)) {
       errors.push('Invalid status')
     }
     return { valid: errors.length === 0, errors }
