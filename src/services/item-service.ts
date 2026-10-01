@@ -18,7 +18,8 @@ export class ItemService {
   validate(item: Partial<Item>): { valid: boolean; errors: string[] } {
     const errors: string[] = []
     if (!item.name?.trim()) errors.push('Name is required')
-    if (item.status && !['active', 'pending', 'completed'].includes(item.status)) {
+    const validStatuses = ['active', 'pending', 'completed', 'urgent']
+    if (item.status && !validStatuses.includes(item.status)) {
       errors.push('Invalid status')
     }
     return { valid: errors.length === 0, errors }
