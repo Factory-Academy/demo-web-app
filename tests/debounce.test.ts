@@ -57,4 +57,25 @@ describe('debounce', () => {
     expect(func).toHaveBeenCalledTimes(1)
     expect(func).toHaveBeenCalledWith('second')
   })
+
+  test('handles negative wait time by treating it as zero', () => {
+    const func = jest.fn()
+    const debounced = debounce(func, -100)
+
+    debounced()
+    jest.advanceTimersByTime(0)
+
+    expect(func).toHaveBeenCalledTimes(1)
+  })
+
+  test('handles zero wait time', () => {
+    const func = jest.fn()
+    const debounced = debounce(func, 0)
+
+    debounced()
+    expect(func).not.toHaveBeenCalled()
+
+    jest.advanceTimersByTime(0)
+    expect(func).toHaveBeenCalledTimes(1)
+  })
 })

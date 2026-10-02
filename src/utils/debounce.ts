@@ -10,6 +10,7 @@ export function debounce<T extends (...args: any[]) => any>(
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeoutId: NodeJS.Timeout | null = null
+  const delay = Math.max(0, wait)
 
   return function (...args: Parameters<T>) {
     if (timeoutId !== null) {
@@ -17,7 +18,8 @@ export function debounce<T extends (...args: any[]) => any>(
     }
 
     timeoutId = setTimeout(() => {
+      timeoutId = null
       func(...args)
-    }, wait)
+    }, delay)
   }
 }
