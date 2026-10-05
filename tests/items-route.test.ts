@@ -214,5 +214,53 @@ describe('Items API Route', () => {
         ])
       )
     })
+
+    test('walks a full lifecycle including reopen', async () => {
+      const route = await import('../src/app/api/items/route')
+      const id = await createItem(route.POST)
+
+      const steps: Array<[string, string]> = [
+        ['activate', 'active'],
+        ['complete', 'completed'],
+        ['reopen', 'pending'],
+        ['cancel', 'cancelled'],
+      ]
+
+      for (const [event, expected] of steps) {
+        const request = { json: async () => ({ id, event }) } as Request
+        const response = await route.PATCH(request)
+        expect(response.status).toBe(200)
+        expect(response.data.status).toBe(expected)
+      }
+    })
+
+    test('rejects reopening an item that is already pending with 409', async () => {
+      const route = await import('../src/app/api/items/route')
+      const id = await createItem(route.POST)
+
+      const request = { json: async () => ({ id, event: 'reopen' }) } as Request
+      const response = await route.PATCH(request)
+
+      expect(response.status).toBe(409)
+      expect(response.data.error).toContain('not allowed')
+    })
+  })
+
+  describe('statusForReason', () => {
+    test('maps workflow failure reasons onto HTTP statuses', async () => {
+      const { statusForReason } = await import('../src/app/api/items/route')
+
+      expect(statusForReason('not-found')).toBe(404)
+      expect(statusForReason('unknown-event')).toBe(400)
+      expect(statusForReason('store-error')).toBe(503)
+      expect(statusForReason('not-allowed')).toBe(409)
+      expect(statusForReason('guard-blocked')).toBe(409)
+      expect(statusForReason('unknown-state')).toBe(409)
+    })
+
+    test('defaults to 409 when no reason is supplied', async () => {
+      const { statusForReason } = await import('../src/app/api/items/route')
+      expect(statusForReason(undefined)).toBe(409)
+    })
   })
 })

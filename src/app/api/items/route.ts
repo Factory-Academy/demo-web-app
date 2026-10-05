@@ -5,6 +5,7 @@ import {
   ItemWorkflow,
   ItemStore,
   ITEM_EVENTS,
+  WorkflowErrorReason,
 } from '@/services/item-workflow'
 
 const items: Item[] = []
@@ -20,6 +21,29 @@ const store: ItemStore = {
 }
 
 const workflow = new ItemWorkflow(store)
+
+/**
+ * Map a workflow failure onto an HTTP status.
+ *
+ * - a missing item is `404 Not Found`;
+ * - an undefined event is a malformed request, `400 Bad Request` (the schema
+ *   normally rejects these first, so this is a defensive fallback);
+ * - a store failure is transient, `503 Service Unavailable`;
+ * - a disallowed, guard-blocked, or corrupt-state transition conflicts with
+ *   the item's current persisted state, `409 Conflict`.
+ */
+export function statusForReason(reason?: WorkflowErrorReason): number {
+  switch (reason) {
+    case 'not-found':
+      return 404
+    case 'unknown-event':
+      return 400
+    case 'store-error':
+      return 503
+    default:
+      return 409
+  }
+}
 
 // Define validation schema for item creation
 const itemCreateSchema = schema({
@@ -88,9 +112,10 @@ export async function PATCH(request: Request) {
 
   const result = await workflow.send(data.id, data.event)
   if (!result.ok) {
-    // Missing item is a 404; a disallowed transition is a 409 conflict.
-    const status = result.item ? 409 : 404
-    return NextResponse.json({ error: result.error }, { status })
+    return NextResponse.json(
+      { error: result.error },
+      { status: statusForReason(result.reason) }
+    )
   }
 
   return NextResponse.json(result.item)

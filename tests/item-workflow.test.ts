@@ -1,6 +1,8 @@
-import { Item, ItemStatus } from '../src/models/item'
+import { Item, ItemStatus, ITEM_STATES } from '../src/models/item'
+import { StateMachine } from '../src/utils/state-machine'
 import {
   ItemWorkflow,
+  ItemEvent,
   ItemStore,
   itemStateMachine,
 } from '../src/services/item-workflow'
@@ -208,6 +210,124 @@ describe('ItemWorkflow', () => {
       expect(events).toContain('activate')
       expect(events).toContain('cancel')
       expect(events).not.toContain('complete')
+    })
+  })
+
+  describe('failure reasons', () => {
+    test('reports not-found with a reason code', async () => {
+      const workflow = new ItemWorkflow(makeStore(), { now: fixedNow })
+      const result = await workflow.send('missing', 'activate')
+      expect(result.ok).toBe(false)
+      expect(result.reason).toBe('not-found')
+      expect(result.item).toBeUndefined()
+    })
+
+    test('propagates the state-machine reason for a disallowed event', async () => {
+      const store = makeStore([makeItem({ status: 'pending' })])
+      const workflow = new ItemWorkflow(store, { now: fixedNow })
+
+      const result = await workflow.send('1', 'complete')
+      expect(result.ok).toBe(false)
+      expect(result.reason).toBe('not-allowed')
+      // The item is handed back untouched.
+      expect(result.item?.status).toBe('pending')
+      expect(store.items.get('1')?.status).toBe('pending')
+    })
+
+    test('surfaces a corrupt persisted status as unknown-state', async () => {
+      const store = makeStore([makeItem({ status: 'bogus' as ItemStatus })])
+      const workflow = new ItemWorkflow(store, { now: fixedNow })
+
+      const result = await workflow.send('1', 'activate')
+      expect(result.ok).toBe(false)
+      expect(result.reason).toBe('unknown-state')
+      expect(store.items.get('1')?.status).toBe('bogus')
+    })
+  })
+
+  describe('store failures', () => {
+    test('returns a store-error result when the read throws', async () => {
+      const store: ItemStore = {
+        get: () => {
+          throw new Error('db unreachable')
+        },
+        save: () => {},
+      }
+      const workflow = new ItemWorkflow(store, { now: fixedNow })
+
+      const result = await workflow.send('1', 'activate')
+      expect(result.ok).toBe(false)
+      expect(result.reason).toBe('store-error')
+      expect(result.error).toContain('db unreachable')
+    })
+
+    test('returns a store-error when the write rejects and leaves state intact', async () => {
+      const map = new Map<string, Item>([['1', makeItem()]])
+      const store: ItemStore = {
+        get: (id) => map.get(id),
+        save: async () => {
+          throw new Error('write timeout')
+        },
+      }
+      const workflow = new ItemWorkflow(store, { now: fixedNow })
+
+      const result = await workflow.send('1', 'activate')
+      expect(result.ok).toBe(false)
+      expect(result.reason).toBe('store-error')
+      // The failed write must not have advanced the persisted item.
+      expect(map.get('1')?.status).toBe('pending')
+    })
+
+    test('a failed write does not stall later transitions on the same id', async () => {
+      let failNextWrite = true
+      const map = new Map<string, Item>([['1', makeItem()]])
+      const store: ItemStore = {
+        get: (id) => map.get(id),
+        save: async (item) => {
+          await Promise.resolve()
+          if (failNextWrite) {
+            failNextWrite = false
+            throw new Error('transient write error')
+          }
+          map.set(item.id, { ...item })
+        },
+      }
+      const workflow = new ItemWorkflow(store, { now: fixedNow })
+
+      const first = await workflow.send('1', 'activate') // write fails
+      const second = await workflow.send('1', 'activate') // must still run
+
+      expect(first.ok).toBe(false)
+      expect(first.reason).toBe('store-error')
+      expect(second.ok).toBe(true)
+      expect(second.state).toBe('active')
+      expect(map.get('1')?.status).toBe('active')
+    })
+  })
+
+  describe('no-op transitions', () => {
+    test('a self-transition succeeds without writing to the store', async () => {
+      // A machine whose `reopen` loops pending back to pending exercises the
+      // "accepted but unchanged" branch, which the real lifecycle lacks.
+      const selfMachine = new StateMachine<ItemStatus, ItemEvent, Item>({
+        initial: 'pending',
+        states: ITEM_STATES,
+        transitions: [{ from: 'pending', event: 'reopen', to: 'pending' }],
+      })
+      const save = jest.fn()
+      const store: ItemStore = {
+        get: () => makeItem({ status: 'pending' }),
+        save,
+      }
+      const workflow = new ItemWorkflow(store, {
+        machine: selfMachine,
+        now: fixedNow,
+      })
+
+      const result = await workflow.send('1', 'reopen')
+      expect(result.ok).toBe(true)
+      expect(result.state).toBe('pending')
+      expect(save).not.toHaveBeenCalled()
     })
   })
 })

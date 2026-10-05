@@ -1,5 +1,5 @@
 import { Item, ItemStatus, ITEM_STATES } from '@/models/item'
-import { StateMachine } from '@/utils/state-machine'
+import { StateMachine, TransitionReason } from '@/utils/state-machine'
 
 /**
  * Events that drive an item through its lifecycle.
@@ -31,7 +31,7 @@ export const ITEM_EVENTS: readonly ItemEvent[] = [
  * same illegal moves (for example completing a `pending` item) instead of
  * each one re-deriving the rules and drifting apart.
  */
-export const itemStateMachine = new StateMachine<ItemStatus, ItemEvent>({
+export const itemStateMachine = new StateMachine<ItemStatus, ItemEvent, Item>({
   initial: 'pending',
   states: ITEM_STATES,
   transitions: [
@@ -52,17 +52,30 @@ export interface ItemStore {
 }
 
 /**
+ * Why a `send` call failed.
+ *
+ * In addition to the state-machine rejection reasons, the workflow reports
+ * `not-found` when no item has the given id and `store-error` when the
+ * backing store throws while reading or writing.
+ */
+export type WorkflowErrorReason =
+  | TransitionReason
+  | 'not-found'
+  | 'store-error'
+
+/**
  * Outcome of sending an event to the workflow.
  */
 export interface WorkflowResult {
   ok: boolean
   item?: Item
   state?: ItemStatus
+  reason?: WorkflowErrorReason
   error?: string
 }
 
 export interface ItemWorkflowOptions {
-  machine?: StateMachine<ItemStatus, ItemEvent>
+  machine?: StateMachine<ItemStatus, ItemEvent, Item>
   /** Clock used for `updatedAt`; injectable so tests stay deterministic. */
   now?: () => string
 }
@@ -79,7 +92,7 @@ const noop = (): void => {}
  */
 export class ItemWorkflow {
   private readonly store: ItemStore
-  private readonly machine: StateMachine<ItemStatus, ItemEvent>
+  private readonly machine: StateMachine<ItemStatus, ItemEvent, Item>
   private readonly now: () => string
   // Per-id tail of the serialized transition chain.
   private readonly locks = new Map<string, Promise<void>>()
@@ -107,22 +120,34 @@ export class ItemWorkflow {
   /**
    * Apply a lifecycle event to the item with the given id.
    *
-   * Resolves with `ok: false` (and the item left untouched) when the item
-   * does not exist or the event is not allowed from its current state.
+   * Resolves with `ok: false` (and `reason` set) when the item does not
+   * exist, the event is not allowed from its current state, or the backing
+   * store throws. A store failure never rejects the returned promise and
+   * never leaves the lock chain stalled, so later events on the same id
+   * still run.
    */
   async send(id: string, event: ItemEvent): Promise<WorkflowResult> {
     return this.serialize(id, async () => {
-      const current = await this.store.get(id)
-      if (!current) {
-        return { ok: false, error: `Item "${id}" not found` }
+      let current: Item | undefined
+      try {
+        current = await this.store.get(id)
+      } catch (err) {
+        return this.storeError(err)
       }
 
-      const result = this.machine.transition(current.status, event)
+      if (!current) {
+        return { ok: false, reason: 'not-found', error: `Item "${id}" not found` }
+      }
+
+      // The item is passed as transition data so guards can inspect the full
+      // record, not just its status.
+      const result = this.machine.transition(current.status, event, current)
       if (!result.ok) {
         return {
           ok: false,
           item: current,
           state: current.status,
+          reason: result.reason,
           error: result.error,
         }
       }
@@ -137,9 +162,25 @@ export class ItemWorkflow {
         status: result.state,
         updatedAt: this.now(),
       }
-      await this.store.save(updated)
+      try {
+        await this.store.save(updated)
+      } catch (err) {
+        // The write failed, so the persisted item is still `current`.
+        return this.storeError(err, current)
+      }
       return { ok: true, item: updated, state: updated.status }
     })
+  }
+
+  private storeError(err: unknown, item?: Item): WorkflowResult {
+    const message = err instanceof Error ? err.message : String(err)
+    return {
+      ok: false,
+      item,
+      state: item?.status,
+      reason: 'store-error',
+      error: `Store operation failed: ${message}`,
+    }
   }
 
   /**

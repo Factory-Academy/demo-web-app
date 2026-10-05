@@ -99,3 +99,46 @@ are rejected with the item left untouched; the API route surfaces these as
 - `src/services/item-service.ts`: `validate` checks `ITEM_STATES`, and
   `calculatePriority` now keys off the real `active` state instead of the
   dead `'urgent'` branch.
+
+### Rejection reasons
+
+A rejected transition is more than a boolean. `StateMachine.transition`
+returns a `reason` code alongside the human-readable `error`, so callers can
+branch on a stable value instead of matching message text:
+
+| `reason`        | Meaning                                                        |
+|-----------------|----------------------------------------------------------------|
+| `unknown-state` | the current state is not declared (corrupt/externally mutated) |
+| `unknown-event` | no transition anywhere declares the event                      |
+| `not-allowed`   | the event is declared, but not from the current state          |
+| `guard-blocked` | a transition exists from the current state, but its guard failed |
+
+A successful transition omits `reason` entirely. A transition whose target
+equals its source is accepted but reports `changed: false`.
+
+`ItemWorkflow.send` widens this set with two workflow-level reasons:
+`not-found` (no item has the id) and `store-error` (the backing store threw).
+The API route maps them to HTTP via `statusForReason`:
+
+- `not-found` → `404`
+- `unknown-event` → `400` (a defensive fallback; the request schema rejects
+  unknown events first)
+- `store-error` → `503`
+- everything else (`not-allowed`, `guard-blocked`, `unknown-state`) → `409`
+
+### Edge cases hardened
+
+- **Ambiguous definitions fail fast.** The constructor rejects two
+  *unconditional* transitions that share a source state and event, since the
+  chosen target would otherwise depend on declaration order. Guarded
+  transitions may still sit beside one another.
+- **Store failures are contained.** `send` catches throws from both
+  `store.get` and `store.save`, returns a `store-error` result instead of
+  rejecting, and leaves the per-id lock chain healthy so later events on the
+  same id still run. A failed write never advances the persisted item.
+- **Corrupt persisted state is reported, not crashed on.** An item whose
+  stored `status` is not a valid `ItemStatus` yields an `unknown-state`
+  rejection rather than an exception.
+- **Transition guards see the whole item.** `send` passes the current `Item`
+  as the transition context, so a guard can inspect any field, not just the
+  status.

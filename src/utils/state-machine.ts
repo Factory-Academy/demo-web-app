@@ -67,18 +67,39 @@ export interface StateMachineDefinition<
 }
 
 /**
+ * Why a transition was rejected. Lets callers branch on a stable code
+ * instead of string-matching the human-readable `error`, so, for example, a
+ * request handler can map each case onto a different HTTP status.
+ *
+ * - `unknown-state`: `current` is not one of the machine's declared states
+ *   (typically corrupt or externally mutated persisted data).
+ * - `unknown-event`: `event` is not referenced by any transition at all.
+ * - `not-allowed`: the event exists elsewhere, but not from `current`.
+ * - `guard-blocked`: a transition is declared from `current` for the event,
+ *   but its guard rejected the move for the supplied data.
+ */
+export type TransitionReason =
+  | 'unknown-state'
+  | 'unknown-event'
+  | 'not-allowed'
+  | 'guard-blocked'
+
+/**
  * Outcome of attempting a transition.
  *
  * - `ok` indicates whether the event was accepted.
  * - `state` is the resulting state when accepted, otherwise the unchanged
  *   current state.
- * - `changed` is `true` only when the state actually moved.
- * - `error` carries a human-readable reason when the event was rejected.
+ * - `changed` is `true` only when the state actually moved. A transition
+ *   whose target equals its source is accepted but reports `changed: false`.
+ * - `reason` classifies a rejection; it is omitted on success.
+ * - `error` carries a human-readable message when the event was rejected.
  */
 export interface TransitionResult<S extends string> {
   ok: boolean
   state: S
   changed: boolean
+  reason?: TransitionReason
   error?: string
 }
 
@@ -96,6 +117,8 @@ export class StateMachine<
   readonly initial: S
   readonly states: readonly S[]
   private readonly transitions: ReadonlyArray<TransitionDefinition<S, E, C>>
+  private readonly declaredEvents: Set<E>
+  private readonly declaredEventList: E[]
 
   constructor(definition: StateMachineDefinition<S, E, C>) {
     const known = new Set<string>(definition.states)
@@ -108,6 +131,12 @@ export class StateMachine<
         `Initial state "${definition.initial}" is not in the declared states`
       )
     }
+
+    const declaredEvents = new Set<E>()
+    const declaredEventList: E[] = []
+    // Tracks (source, event) pairs that already have an unconditional
+    // transition, so a second one can be rejected as ambiguous.
+    const unconditional = new Set<string>()
 
     for (const transition of definition.transitions) {
       const sources = this.normalizeFrom(transition.from)
@@ -123,11 +152,33 @@ export class StateMachine<
           `Transition for event "${transition.event}" references unknown target state "${transition.to}"`
         )
       }
+
+      if (!declaredEvents.has(transition.event)) {
+        declaredEvents.add(transition.event)
+        declaredEventList.push(transition.event)
+      }
+
+      // Two unguarded transitions for the same source and event would make
+      // the chosen target depend on declaration order. A guarded transition
+      // is conditional, so it may legitimately sit beside others.
+      if (!transition.guard) {
+        for (const source of sources) {
+          const key = `${source}\u0000${transition.event}`
+          if (unconditional.has(key)) {
+            throw new Error(
+              `Duplicate unconditional transition for event "${transition.event}" from state "${source}"`
+            )
+          }
+          unconditional.add(key)
+        }
+      }
     }
 
     this.initial = definition.initial
     this.states = definition.states
     this.transitions = definition.transitions
+    this.declaredEvents = declaredEvents
+    this.declaredEventList = declaredEventList
   }
 
   private normalizeFrom(from: S | S[]): S[] {
@@ -150,6 +201,27 @@ export class StateMachine<
       }
       return true
     })
+  }
+
+  /**
+   * Whether any transition is declared from `from` for `event`, ignoring
+   * guards. Used to tell a guard-blocked move apart from one that is simply
+   * not allowed from the current state.
+   */
+  private hasTransitionFor(from: S, event: E): boolean {
+    return this.transitions.some(
+      (transition) =>
+        transition.event === event &&
+        this.normalizeFrom(transition.from).includes(from)
+    )
+  }
+
+  /**
+   * Every event referenced by a transition, in declaration order and
+   * without duplicates.
+   */
+  knownEvents(): E[] {
+    return this.declaredEventList.slice()
   }
 
   /**
@@ -178,24 +250,48 @@ export class StateMachine<
         ok: false,
         state: current,
         changed: false,
+        reason: 'unknown-state',
         error: `Unknown state "${current}"`,
       }
     }
 
     const transition = this.findTransition(current, event, data)
-    if (!transition) {
+    if (transition) {
+      return {
+        ok: true,
+        state: transition.to,
+        changed: transition.to !== current,
+      }
+    }
+
+    if (!this.declaredEvents.has(event)) {
       return {
         ok: false,
         state: current,
         changed: false,
-        error: `Event "${event}" is not allowed from state "${current}"`,
+        reason: 'unknown-event',
+        error: `Event "${event}" is not defined on this machine`,
+      }
+    }
+
+    // The event exists and a transition is declared from this state, so the
+    // only thing that could have rejected the move is a guard.
+    if (this.hasTransitionFor(current, event)) {
+      return {
+        ok: false,
+        state: current,
+        changed: false,
+        reason: 'guard-blocked',
+        error: `Event "${event}" is blocked by a guard from state "${current}"`,
       }
     }
 
     return {
-      ok: true,
-      state: transition.to,
-      changed: transition.to !== current,
+      ok: false,
+      state: current,
+      changed: false,
+      reason: 'not-allowed',
+      error: `Event "${event}" is not allowed from state "${current}"`,
     }
   }
 
