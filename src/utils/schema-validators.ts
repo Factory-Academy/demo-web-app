@@ -71,7 +71,7 @@ export const validators = {
   /**
    * Validates that a value is one of the allowed enum values
    */
-  enum: <T>(allowed: T[]): ValidatorFn<T> => (value, field) => {
+  enum: <T>(allowed: readonly T[]): ValidatorFn<T> => (value, field) => {
     if (!allowed.includes(value)) {
       return `${field} must be one of: ${allowed.join(', ')}`
     }

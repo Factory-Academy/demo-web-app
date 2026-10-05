@@ -145,4 +145,74 @@ describe('Items API Route', () => {
     expect(response.status).toBe(200)
     expect(Array.isArray(response.data)).toBe(true)
   })
+
+  describe('PATCH lifecycle transitions', () => {
+    async function createItem(POST: (request: Request) => Promise<any>) {
+      const request = { json: async () => ({ name: 'Lifecycle Item' }) } as Request
+      const response = await POST(request)
+      return response.data.id as string
+    }
+
+    test('advances an item through a valid transition', async () => {
+      const route = await import('../src/app/api/items/route')
+      const id = await createItem(route.POST)
+
+      const request = { json: async () => ({ id, event: 'activate' }) } as Request
+      const response = await route.PATCH(request)
+
+      expect(response.status).toBe(200)
+      expect(response.data.status).toBe('active')
+    })
+
+    test('rejects a disallowed transition with 409', async () => {
+      const route = await import('../src/app/api/items/route')
+      const id = await createItem(route.POST)
+
+      // completing a pending item is not allowed
+      const request = { json: async () => ({ id, event: 'complete' }) } as Request
+      const response = await route.PATCH(request)
+
+      expect(response.status).toBe(409)
+      expect(response.data.error).toContain('not allowed')
+    })
+
+    test('returns 404 for an unknown item', async () => {
+      const { PATCH } = await import('../src/app/api/items/route')
+
+      const request = { json: async () => ({ id: '999', event: 'activate' }) } as Request
+      const response = await PATCH(request)
+
+      expect(response.status).toBe(404)
+      expect(response.data.error).toContain('not found')
+    })
+
+    test('validates the event against the allowed set', async () => {
+      const { PATCH } = await import('../src/app/api/items/route')
+
+      const request = { json: async () => ({ id: '1', event: 'explode' }) } as Request
+      const response = await PATCH(request)
+
+      expect(response.status).toBe(400)
+      expect(response.data.error).toBe('Validation failed')
+      expect(response.data.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: 'event' }),
+        ])
+      )
+    })
+
+    test('requires an item id', async () => {
+      const { PATCH } = await import('../src/app/api/items/route')
+
+      const request = { json: async () => ({ event: 'activate' }) } as Request
+      const response = await PATCH(request)
+
+      expect(response.status).toBe(400)
+      expect(response.data.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: 'id' }),
+        ])
+      )
+    })
+  })
 })
