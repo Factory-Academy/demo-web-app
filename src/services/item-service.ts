@@ -7,6 +7,12 @@ export class ItemService {
     
     // Use UTC timestamps to avoid timezone-naive comparison
     const ageMs = now.getTime() - createdDate.getTime()
+    
+    // Handle invalid or future dates
+    if (isNaN(ageMs) || ageMs < 0) {
+      return 'low'
+    }
+    
     const ageDays = Math.floor(ageMs / 86400000)
     let baseScore = 0
 

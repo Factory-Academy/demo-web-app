@@ -38,4 +38,30 @@ describe('ItemService', () => {
     expect(service.calculatePriority(oldItem)).toBe('medium')
     expect(service.calculatePriority(urgentItem)).toBe('critical')
   })
+
+  test('calculatePriority handles invalid dates', () => {
+    const invalidItem: Item = {
+      id: '3',
+      name: 'Invalid Date Item',
+      status: 'active',
+      createdAt: 'not-a-date',
+      updatedAt: new Date().toISOString()
+    }
+
+    expect(service.calculatePriority(invalidItem)).toBe('low')
+  })
+
+  test('calculatePriority handles future dates', () => {
+    const futureDate = new Date(Date.now() + 86400000).toISOString() // 1 day from now
+
+    const futureItem: Item = {
+      id: '4',
+      name: 'Future Item',
+      status: 'active',
+      createdAt: futureDate,
+      updatedAt: futureDate
+    }
+
+    expect(service.calculatePriority(futureItem)).toBe('low')
+  })
 })
