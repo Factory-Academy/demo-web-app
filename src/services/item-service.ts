@@ -2,7 +2,9 @@ import { Item } from '@/models/item'
 
 export class ItemService {
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
+    const nowUtc = Date.now()
+    const createdUtc = new Date(record.createdAt).getTime()
+    const ageMs = nowUtc - createdUtc
     const ageDays = Math.floor(ageMs / 86400000)
     let baseScore = 0
 
