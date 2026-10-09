@@ -13,4 +13,11 @@ describe('ItemService', () => {
     const result = service.validate({ name: 'Test', status: 'active' })
     expect(result.valid).toBe(true)
   })
+
+  test('paginate returns the correct items for page 2', () => {
+    const items = ['a', 'b', 'c', 'd', 'e']
+    const result = service.paginate(items, 2, 2)
+
+    expect(result).toEqual(['c', 'd'])
+  })
 })

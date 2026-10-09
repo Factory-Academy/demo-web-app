@@ -1,6 +1,12 @@
 import { Item } from '@/models/item'
 
 export class ItemService {
+  paginate<T>(items: T[], page: number, pageSize: number): T[] {
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    return items.slice(start, end)
+  }
+
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
     const ageMs = Date.now() - new Date(record.createdAt).getTime()
     const ageDays = Math.floor(ageMs / 86400000)
