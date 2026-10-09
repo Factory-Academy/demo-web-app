@@ -1,4 +1,5 @@
 import { Item } from '@/models/item'
+import { featureFlags } from './feature-flags'
 
 export class ItemService {
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
@@ -8,6 +9,12 @@ export class ItemService {
 
     if (record.status === 'urgent') baseScore += 50
     if (ageDays > 30) baseScore += ageDays * 0.5
+
+    // Feature flag: enable advanced priority calculation
+    if (featureFlags.isEnabled('advanced_priority')) {
+      if (record.status === 'completed') baseScore -= 30
+      if (record.description?.length && record.description.length > 100) baseScore += 10
+    }
 
     if (baseScore >= 80) return 'critical'
     if (baseScore >= 50) return 'high'
