@@ -1,7 +1,7 @@
 {
   "name": "demo-web-app",
   "version": "0.1.0",
-  "description": "{{PROJECT_DESCRIPTION}}",
+  "description": "Data protection and security management platform for enterprise data sources",
   "private": true,
   "scripts": {
     "dev": "next dev",
