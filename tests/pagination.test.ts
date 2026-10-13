@@ -57,6 +57,17 @@ describe('getPaginationInfo', () => {
     const result = getPaginationInfo(0, 1, 10)
     
     expect(result.totalPages).toBe(0)
+    expect(result.currentPage).toBe(0)
+    expect(result.startIndex).toBe(0)
+    expect(result.endIndex).toBe(0)
+    expect(result.hasNextPage).toBe(false)
+  })
+
+  test('handles empty collection with high page number', () => {
+    const result = getPaginationInfo(0, 5, 10)
+    
+    expect(result.totalPages).toBe(0)
+    expect(result.currentPage).toBe(0)
     expect(result.startIndex).toBe(0)
     expect(result.endIndex).toBe(0)
     expect(result.hasNextPage).toBe(false)

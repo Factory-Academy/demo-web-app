@@ -16,7 +16,7 @@ export function getPaginationInfo(
   }
 
   const totalPages = Math.ceil(totalItems / pageSize)
-  const currentPage = Math.min(page, totalPages || 1)
+  const currentPage = totalPages === 0 ? 0 : Math.min(page, totalPages)
   
   // Calculate zero-indexed start position
   const startIndex = (currentPage - 1) * pageSize
