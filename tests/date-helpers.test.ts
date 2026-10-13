@@ -68,4 +68,19 @@ describe('date-helpers', () => {
       expect(age).toBe(1) // Should be 1 day, not affected by local timezone
     })
   })
+
+  describe('summarizeItems', () => {
+    test('calculates total score of multiple items', () => {
+      const items = [{ score: 10 }, { score: 20 }, { score: 30 }]
+      expect(summarizeItems(items)).toBe(60)
+    })
+
+    test('handles empty array without error', () => {
+      expect(summarizeItems([])).toBe(0)
+    })
+
+    test('handles single item', () => {
+      expect(summarizeItems([{ score: 100 }])).toBe(100)
+    })
+  })
 })

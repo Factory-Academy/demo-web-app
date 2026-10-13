@@ -27,3 +27,13 @@ export function getAgeDays(date: Date | string): number {
   const ageMs = getDateDifferenceMs(new Date(), date)
   return Math.floor(ageMs / 86400000)
 }
+
+/**
+ * Summarize an array of items by calculating their total score.
+ * 
+ * @param items - Array of items to summarize
+ * @returns The total score of all items
+ */
+export function summarizeItems(items: { score: number }[]): number {
+  return items.reduce((total, item) => total + item.score, 0)
+}
