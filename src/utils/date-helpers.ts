@@ -1,3 +1,6 @@
+/** Milliseconds in one day (24 hours) */
+export const MS_PER_DAY = 86400000
+
 /**
  * Calculate the difference between two dates in milliseconds using UTC timestamps.
  * This avoids timezone-naive comparisons that can produce incorrect results.
@@ -25,5 +28,5 @@ export function getDateDifferenceMs(
  */
 export function getAgeDays(date: Date | string): number {
   const ageMs = getDateDifferenceMs(new Date(), date)
-  return Math.floor(ageMs / 86400000)
+  return Math.floor(ageMs / MS_PER_DAY)
 }

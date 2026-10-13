@@ -1,4 +1,4 @@
-import { getDateDifferenceMs, getAgeDays } from '../src/utils/date-helpers'
+import { getDateDifferenceMs, getAgeDays, MS_PER_DAY } from '../src/utils/date-helpers'
 
 describe('date-helpers', () => {
   describe('getDateDifferenceMs', () => {
@@ -7,23 +7,23 @@ describe('date-helpers', () => {
       const dateB = new Date('2024-01-10T12:00:00Z')
       
       const diff = getDateDifferenceMs(dateA, dateB)
-      expect(diff).toBe(5 * 86400000) // 5 days in milliseconds
+      expect(diff).toBe(5 * MS_PER_DAY) // 5 days in milliseconds
     })
 
     test('calculates difference between ISO strings', () => {
       const diff = getDateDifferenceMs('2024-01-15T12:00:00Z', '2024-01-10T12:00:00Z')
-      expect(diff).toBe(5 * 86400000)
+      expect(diff).toBe(5 * MS_PER_DAY)
     })
 
     test('handles mixed Date and string inputs', () => {
       const dateA = new Date('2024-01-15T12:00:00Z')
       const diff = getDateDifferenceMs(dateA, '2024-01-10T12:00:00Z')
-      expect(diff).toBe(5 * 86400000)
+      expect(diff).toBe(5 * MS_PER_DAY)
     })
 
     test('returns negative difference when dateB is after dateA', () => {
       const diff = getDateDifferenceMs('2024-01-10T12:00:00Z', '2024-01-15T12:00:00Z')
-      expect(diff).toBe(-5 * 86400000)
+      expect(diff).toBe(-5 * MS_PER_DAY)
     })
 
     test('handles dates with different timezones correctly using UTC', () => {
@@ -38,19 +38,19 @@ describe('date-helpers', () => {
 
   describe('getAgeDays', () => {
     test('calculates age in days for a past date', () => {
-      const pastDate = new Date(Date.now() - 10 * 86400000) // 10 days ago
+      const pastDate = new Date(Date.now() - 10 * MS_PER_DAY) // 10 days ago
       const age = getAgeDays(pastDate)
       expect(age).toBe(10)
     })
 
     test('handles ISO string input', () => {
-      const pastDate = new Date(Date.now() - 7 * 86400000).toISOString()
+      const pastDate = new Date(Date.now() - 7 * MS_PER_DAY).toISOString()
       const age = getAgeDays(pastDate)
       expect(age).toBe(7)
     })
 
     test('returns negative age for future dates', () => {
-      const futureDate = new Date(Date.now() + 3 * 86400000) // 3 days from now
+      const futureDate = new Date(Date.now() + 3 * MS_PER_DAY) // 3 days from now
       const age = getAgeDays(futureDate)
       expect(age).toBe(-3)
     })
