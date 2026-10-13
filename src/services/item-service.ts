@@ -1,4 +1,5 @@
 import { Item } from '@/models/item'
+import { MS_PER_DAY } from '@/utils/date-helpers'
 
 export class ItemService {
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
@@ -9,11 +10,11 @@ export class ItemService {
     const ageMs = now.getTime() - createdDate.getTime()
     
     // Handle invalid or future dates
-    if (isNaN(ageMs) || ageMs < 0) {
+    if (!isFinite(ageMs) || ageMs < 0) {
       return 'low'
     }
     
-    const ageDays = Math.floor(ageMs / 86400000)
+    const ageDays = Math.floor(ageMs / MS_PER_DAY)
     let baseScore = 0
 
     if (record.status === 'urgent') baseScore += 50

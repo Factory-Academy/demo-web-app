@@ -1,5 +1,6 @@
 import { ItemService } from '../src/services/item-service'
 import { Item } from '../src/models/item'
+import { MS_PER_DAY } from '../src/utils/date-helpers'
 
 describe('ItemService', () => {
   const service = new ItemService()
@@ -17,7 +18,7 @@ describe('ItemService', () => {
 
   test('calculatePriority handles timezone-aware dates correctly', () => {
     const now = new Date()
-    const oldDate = new Date(now.getTime() - 35 * 86400000) // 35 days ago
+    const oldDate = new Date(now.getTime() - 35 * MS_PER_DAY) // 35 days ago
     
     const oldItem: Item = {
       id: '1',
@@ -52,7 +53,7 @@ describe('ItemService', () => {
   })
 
   test('calculatePriority handles future dates', () => {
-    const futureDate = new Date(Date.now() + 86400000).toISOString() // 1 day from now
+    const futureDate = new Date(Date.now() + MS_PER_DAY).toISOString() // 1 day from now
 
     const futureItem: Item = {
       id: '4',
