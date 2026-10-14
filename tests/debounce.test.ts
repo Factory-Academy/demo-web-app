@@ -39,4 +39,21 @@ describe('debounce', () => {
 
     expect(mockFn).toHaveBeenCalledWith('test', 42)
   })
+
+  test('throws error for negative delay', () => {
+    const mockFn = jest.fn()
+
+    expect(() => debounce(mockFn, -100)).toThrow('Debounce delay must be non-negative')
+  })
+
+  test('handles zero delay', () => {
+    const mockFn = jest.fn()
+    const debouncedFn = debounce(mockFn, 0)
+
+    debouncedFn()
+    expect(mockFn).not.toHaveBeenCalled()
+
+    jest.advanceTimersByTime(0)
+    expect(mockFn).toHaveBeenCalledTimes(1)
+  })
 })
