@@ -1,26 +1,24 @@
 import { Item } from '@/models/item'
+import { Clock, systemClock } from './item/clock'
+import { computePriority, Priority } from './item/priority'
+import { validateItem, ValidationResult } from './item/validation'
 
+/**
+ * Thin adapter over the pure item core (`./item`).
+ *
+ * This class owns the only side effect in the module, reading the clock, and
+ * delegates all logic to the pure functions. The public API is unchanged, so
+ * existing callers keep working; inject a `Clock` to make behavior
+ * deterministic in tests.
+ */
 export class ItemService {
-  calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
-    const ageDays = Math.floor(ageMs / 86400000)
-    let baseScore = 0
+  constructor(private readonly clock: Clock = systemClock) {}
 
-    if (record.status === 'urgent') baseScore += 50
-    if (ageDays > 30) baseScore += ageDays * 0.5
-
-    if (baseScore >= 80) return 'critical'
-    if (baseScore >= 50) return 'high'
-    if (baseScore >= 20) return 'medium'
-    return 'low'
+  calculatePriority(record: Item): Priority {
+    return computePriority(record, this.clock.now())
   }
 
-  validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
-    const errors: string[] = []
-    if (!data.name?.trim()) errors.push('Name is required')
-    if (data.status && !['active', 'pending', 'completed'].includes(data.status)) {
-      errors.push('Invalid status')
-    }
-    return { valid: errors.length === 0, errors }
+  validate(data: Partial<Item>): ValidationResult {
+    return validateItem(data)
   }
 }
