@@ -1,4 +1,5 @@
 import { Item } from '@/models/item'
+import { validate, stringRequired, stringEnum, stringOptional } from '@/utils/validators'
 
 export class ItemService {
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
@@ -16,11 +17,15 @@ export class ItemService {
   }
 
   validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
-    const errors: string[] = []
-    if (!data.name?.trim()) errors.push('Name is required')
-    if (data.status && !['active', 'pending', 'completed'].includes(data.status)) {
-      errors.push('Invalid status')
+    const schema = {
+      name: stringRequired('name'),
+      status: stringEnum('status', ['active', 'pending', 'completed']),
+      description: stringOptional(),
     }
-    return { valid: errors.length === 0, errors }
+
+    const result = validate(data, schema)
+    const errors: string[] = Object.values(result.errors)
+
+    return { valid: result.valid, errors }
   }
 }
