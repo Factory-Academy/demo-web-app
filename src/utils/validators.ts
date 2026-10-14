@@ -25,10 +25,15 @@ export const stringRequired = (fieldName: string): Validator => {
 
 /**
  * Creates a validator that requires a string to be one of the given options.
+ * Trims whitespace from input before comparison for robustness.
  */
 export const stringEnum = (fieldName: string, options: string[]): Validator => {
   return (value: unknown) => {
-    if (typeof value !== 'string' || !options.includes(value)) {
+    if (typeof value !== 'string') {
+      return `${fieldName} must be one of: ${options.join(', ')}`
+    }
+    const trimmedValue = value.trim()
+    if (!options.includes(trimmedValue)) {
       return `${fieldName} must be one of: ${options.join(', ')}`
     }
     return null
@@ -37,6 +42,7 @@ export const stringEnum = (fieldName: string, options: string[]): Validator => {
 
 /**
  * Creates a validator that allows string optionally.
+ * Accepts undefined, null, or any string value (including empty strings).
  */
 export const stringOptional = (): Validator => {
   return (value: unknown) => {

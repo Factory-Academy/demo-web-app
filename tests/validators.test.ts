@@ -17,6 +17,10 @@ describe('validators', () => {
       expect(validator('   ')).toBe('name is required')
     })
 
+    test('rejects tabs and newlines', () => {
+      expect(validator('\t\n')).toBe('name is required')
+    })
+
     test('rejects undefined', () => {
       expect(validator(undefined)).toBe('name is required')
     })
@@ -27,10 +31,30 @@ describe('validators', () => {
 
     test('rejects non-string', () => {
       expect(validator(123)).toBe('name is required')
+      expect(validator({})).toBe('name is required')
+      expect(validator([])).toBe('name is required')
+    })
+
+    test('rejects NaN and Infinity', () => {
+      expect(validator(NaN)).toBe('name is required')
+      expect(validator(Infinity)).toBe('name is required')
     })
 
     test('accepts valid string', () => {
       expect(validator('valid name')).toBeNull()
+    })
+
+    test('accepts string with leading/trailing whitespace after trim', () => {
+      expect(validator('  valid name  ')).toBeNull()
+      expect(validator('\nvalid name\t')).toBeNull()
+    })
+
+    test('accepts single character string', () => {
+      expect(validator('a')).toBeNull()
+    })
+
+    test('accepts string with special characters', () => {
+      expect(validator('valid-name_123!@#')).toBeNull()
     })
   })
 
@@ -53,6 +77,17 @@ describe('validators', () => {
       expect(validator('pending')).toBeNull()
       expect(validator('completed')).toBeNull()
     })
+
+    test('trims whitespace before comparison', () => {
+      expect(validator('  active  ')).toBeNull()
+      expect(validator('\tpending\n')).toBeNull()
+      expect(validator(' completed ')).toBeNull()
+    })
+
+    test('rejects trimmed value that does not match', () => {
+      const error = validator('  invalid  ')
+      expect(error).toContain('status must be one of')
+    })
   })
 
   describe('stringOptional', () => {
@@ -60,6 +95,14 @@ describe('validators', () => {
 
     test('accepts string', () => {
       expect(validator('value')).toBeNull()
+    })
+
+    test('accepts empty string', () => {
+      expect(validator('')).toBeNull()
+    })
+
+    test('accepts whitespace-only string', () => {
+      expect(validator('   ')).toBeNull()
     })
 
     test('accepts undefined', () => {
@@ -73,6 +116,14 @@ describe('validators', () => {
     test('rejects non-string value', () => {
       expect(validator(123)).toBe('Value must be a string')
       expect(validator({})).toBe('Value must be a string')
+      expect(validator([])).toBe('Value must be a string')
+      expect(validator(false)).toBe('Value must be a string')
+    })
+
+    test('rejects NaN and Infinity', () => {
+      expect(validator(NaN)).toBe('Value must be a string')
+      expect(validator(Infinity)).toBe('Value must be a string')
+      expect(validator(-Infinity)).toBe('Value must be a string')
     })
   })
 
@@ -117,6 +168,43 @@ describe('validators', () => {
         schema,
       )
       expect(result.valid).toBe(true)
+    })
+
+    test('handles empty string in optional field', () => {
+      const result = validate(
+        { name: 'test', status: 'active', description: '' },
+        schema,
+      )
+      expect(result.valid).toBe(true)
+    })
+
+    test('handles whitespace in enum field with trimming', () => {
+      const result = validate(
+        { name: 'test', status: '  pending  ' },
+        schema,
+      )
+      expect(result.valid).toBe(true)
+    })
+
+    test('validates all fields even with partial errors', () => {
+      const result = validate(
+        { name: '', status: 'invalid', description: 123 },
+        schema,
+      )
+      expect(result.valid).toBe(false)
+      expect(Object.keys(result.errors).length).toBe(3)
+      expect(result.errors.name).toBeDefined()
+      expect(result.errors.status).toBeDefined()
+      expect(result.errors.description).toBeDefined()
+    })
+
+    test('returns empty errors object when validation succeeds', () => {
+      const result = validate(
+        { name: 'test', status: 'active', description: undefined },
+        schema,
+      )
+      expect(result.valid).toBe(true)
+      expect(Object.keys(result.errors).length).toBe(0)
     })
   })
 })
