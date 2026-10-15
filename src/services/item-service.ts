@@ -1,4 +1,5 @@
 import { Item } from '@/models/item'
+import { paginate, PaginationParams, PaginatedResult } from '@/utils/pagination'
 
 export class ItemService {
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
@@ -22,5 +23,9 @@ export class ItemService {
       errors.push('Invalid status')
     }
     return { valid: errors.length === 0, errors }
+  }
+
+  listItems(items: Item[], params: PaginationParams = {}): PaginatedResult<Item> {
+    return paginate(items, params)
   }
 }
