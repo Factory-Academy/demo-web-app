@@ -1,19 +1,10 @@
 import { Item } from '@/models/item'
 import { paginate, PaginationParams, PaginatedResult } from '@/utils/pagination'
+import { calculateAgeDays } from '@/utils/date-utils'
 
 export class ItemService {
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const now = new Date(Date.now())
-    const createdAt = new Date(record.createdAt)
-    const ageDays = Math.floor(
-      (Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) -
-        Date.UTC(
-          createdAt.getUTCFullYear(),
-          createdAt.getUTCMonth(),
-          createdAt.getUTCDate()
-        )) /
-        86400000
-    )
+    const ageDays = calculateAgeDays(record.createdAt)
     let baseScore = 0
 
     if (record.status === 'urgent') baseScore += 50
