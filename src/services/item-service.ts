@@ -1,6 +1,7 @@
 import { Item } from '@/models/item'
 import { paginate, PaginationParams, PaginatedResult } from '@/utils/pagination'
 import { calculateAgeDays } from '@/utils/date-utils'
+import { ValidationError } from '@/utils/api-errors'
 
 export class ItemService {
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
@@ -23,6 +24,13 @@ export class ItemService {
       errors.push('Invalid status')
     }
     return { valid: errors.length === 0, errors }
+  }
+
+  validateOrThrow(data: Partial<Item>): void {
+    const result = this.validate(data)
+    if (!result.valid) {
+      throw new ValidationError('Validation failed', result.errors)
+    }
   }
 
   listItems(items: Item[], params: PaginationParams = {}): PaginatedResult<Item> {

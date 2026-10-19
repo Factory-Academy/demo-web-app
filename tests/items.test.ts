@@ -1,5 +1,6 @@
 import { ItemService } from '../src/services/item-service'
 import { Item } from '../src/models/item'
+import { ValidationError } from '../src/utils/api-errors'
 
 describe('ItemService', () => {
   const service = new ItemService()
@@ -14,6 +15,11 @@ describe('ItemService', () => {
     test('accepts valid item', () => {
       const result = service.validate({ name: 'Test', status: 'active' })
       expect(result.valid).toBe(true)
+    })
+
+    test('throws ValidationError for invalid item in validateOrThrow', () => {
+      expect(() => service.validateOrThrow({ name: '', status: 'bad' })).toThrow(ValidationError)
+      expect(() => service.validateOrThrow({ name: '', status: 'bad' })).toThrow('Validation failed')
     })
   })
 
