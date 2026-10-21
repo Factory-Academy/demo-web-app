@@ -15,6 +15,18 @@ describe('ItemService', () => {
       const result = service.validate({ name: 'Test', status: 'active' })
       expect(result.valid).toBe(true)
     })
+
+    test('validate accepts urgent status', () => {
+      const result = service.validate({ name: 'Critical Fix', status: 'urgent' })
+      expect(result.valid).toBe(true)
+      expect(result.errors).toHaveLength(0)
+    })
+
+    test('validate rejects invalid status', () => {
+      const result = service.validate({ name: 'Test', status: 'invalid' as any })
+      expect(result.valid).toBe(false)
+      expect(result.errors).toContain('Invalid status')
+    })
   })
 
   describe('calculatePriority', () => {
