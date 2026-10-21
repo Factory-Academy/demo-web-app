@@ -18,4 +18,22 @@ describe('debounce', () => {
 
     jest.useRealTimers()
   })
+
+  test('clears an existing timeout even when its id is 0', () => {
+    const setTimeoutSpy = jest
+      .spyOn(global, 'setTimeout')
+      .mockImplementation(() => 0 as ReturnType<typeof setTimeout>)
+    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout').mockImplementation(() => {})
+
+    const fn = jest.fn()
+    const debounced = debounce(fn, 100)
+
+    debounced('first')
+    debounced('second')
+
+    expect(clearTimeoutSpy).toHaveBeenCalledWith(0)
+
+    setTimeoutSpy.mockRestore()
+    clearTimeoutSpy.mockRestore()
+  })
 })
