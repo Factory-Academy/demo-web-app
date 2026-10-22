@@ -4,6 +4,7 @@ import {
   ResilientExecutor,
   TimeoutError,
 } from '@/lib/resilience'
+import { TypedEmitter } from '@/lib/events'
 
 /** Error carrying the HTTP status for a non-2xx response. */
 export class HttpError extends Error {
@@ -47,6 +48,19 @@ export function isRetryableError(error: unknown): boolean {
   return false
 }
 
+/**
+ * Observability events emitted by {@link ItemClient}. One logical call emits a
+ * single `request` and then exactly one of `success` / `error`, regardless of
+ * how many underlying retry attempts the resilient executor makes. `created`
+ * additionally fires once a `createItem` call succeeds.
+ */
+export interface ItemClientEvents {
+  request: { method: string; url: string }
+  success: { method: string; url: string }
+  error: { method: string; url: string; error: unknown }
+  created: Item
+}
+
 export interface ItemClientOptions {
   /** Prefix for request URLs. Empty string targets the same origin. */
   baseUrl?: string
@@ -58,6 +72,8 @@ export interface ItemClientOptions {
   retries?: number
   /** Supply a pre-built executor (e.g. shared breaker, custom sleep). */
   executor?: ResilientExecutor
+  /** Supply a pre-built emitter (e.g. to share one across clients). */
+  emitter?: TypedEmitter<ItemClientEvents>
 }
 
 /**
@@ -70,8 +86,21 @@ export class ItemClient {
   private readonly fetchImpl: typeof fetch
   private readonly executor: ResilientExecutor
 
+  /**
+   * Subscribe to request lifecycle events. Listener errors are swallowed and
+   * reported through `onError` so instrumentation can never break a request.
+   */
+  readonly events: TypedEmitter<ItemClientEvents>
+
   constructor(options: ItemClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? ''
+    this.events =
+      options.emitter ??
+      new TypedEmitter<ItemClientEvents>({
+        onError: () => {
+          // A misbehaving observer must not fail the HTTP call it observes.
+        },
+      })
 
     const rawFetch = options.fetchImpl ?? fetch
     // Preserve correct `this` for the global fetch to avoid "Illegal
@@ -103,26 +132,47 @@ export class ItemClient {
 
   /** Fetch all items. */
   listItems(signal?: AbortSignal): Promise<Item[]> {
-    return this.executor.execute(async () => {
-      const res = await this.fetchImpl(this.url('/api/items'), {
-        method: 'GET',
-        signal,
-      })
-      return this.parse<Item[]>(res)
-    })
+    return this.send('GET', '/api/items', () =>
+      this.fetchImpl(this.url('/api/items'), { method: 'GET', signal }),
+    )
   }
 
   /** Create a new item. */
-  createItem(input: ItemCreate, signal?: AbortSignal): Promise<Item> {
-    return this.executor.execute(async () => {
-      const res = await this.fetchImpl(this.url('/api/items'), {
+  async createItem(input: ItemCreate, signal?: AbortSignal): Promise<Item> {
+    const item = await this.send<Item>('POST', '/api/items', () =>
+      this.fetchImpl(this.url('/api/items'), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(input),
         signal,
-      })
-      return this.parse<Item>(res)
-    })
+      }),
+    )
+    this.events.emit('created', item)
+    return item
+  }
+
+  /**
+   * Run one request through the resilient executor while emitting exactly one
+   * `request` up front and one terminal `success` / `error` — collapsing the
+   * executor's internal retry attempts into a single logical lifecycle.
+   */
+  private async send<T>(
+    method: string,
+    path: string,
+    call: () => Promise<Response>,
+  ): Promise<T> {
+    const url = this.url(path)
+    this.events.emit('request', { method, url })
+    try {
+      const result = await this.executor.execute<T>(async () =>
+        this.parse<T>(await call()),
+      )
+      this.events.emit('success', { method, url })
+      return result
+    } catch (error) {
+      this.events.emit('error', { method, url, error })
+      throw error
+    }
   }
 
   private url(path: string): string {
