@@ -1,18 +1,39 @@
 import { Item } from '@/models/item'
+import {
+  createPriorityStrategy,
+  PriorityLevel,
+  PriorityResult,
+  PriorityStrategy,
+  ScoringContext,
+} from '@/lib/priority'
+
+export interface ItemServiceOptions {
+  /**
+   * Strategy used by {@link ItemService.calculatePriority}. Defaults to the
+   * built-in `weighted` strategy, which reproduces the original scoring.
+   */
+  priorityStrategy?: PriorityStrategy
+}
 
 export class ItemService {
-  calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
-    const ageDays = Math.floor(ageMs / 86400000)
-    let baseScore = 0
+  private readonly priorityStrategy: PriorityStrategy
 
-    if (record.status === 'urgent') baseScore += 50
-    if (ageDays > 30) baseScore += ageDays * 0.5
+  constructor(options: ItemServiceOptions = {}) {
+    this.priorityStrategy =
+      options.priorityStrategy ?? createPriorityStrategy('weighted')
+  }
 
-    if (baseScore >= 80) return 'critical'
-    if (baseScore >= 50) return 'high'
-    if (baseScore >= 20) return 'medium'
-    return 'low'
+  /** Bucket an item into a priority level using the configured strategy. */
+  calculatePriority(record: Item, context?: ScoringContext): PriorityLevel {
+    return this.priorityStrategy.score(record, context).level
+  }
+
+  /**
+   * Full scoring breakdown (level, numeric score, and reasons) for the item.
+   * Useful for debugging or surfacing *why* an item landed in a bucket.
+   */
+  scorePriority(record: Item, context?: ScoringContext): PriorityResult {
+    return this.priorityStrategy.score(record, context)
   }
 
   validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
