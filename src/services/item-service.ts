@@ -1,26 +1,34 @@
 import { Item } from '@/models/item'
+import {
+  PriorityLevel,
+  ValidationResult,
+  computePriority,
+  validateItem,
+} from '@/lib/item-rules'
 
+export interface ItemServiceOptions {
+  /** Injectable clock in ms for deterministic tests. Defaults to Date.now. */
+  now?: () => number
+}
+
+/**
+ * Thin adapter over the pure rules in `@/lib/item-rules`. Its only job is to
+ * own the one impure dependency — the wall clock — and delegate scoring and
+ * validation to the pure core. The public API is unchanged, so existing
+ * callers need no edits.
+ */
 export class ItemService {
-  calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
-    const ageDays = Math.floor(ageMs / 86400000)
-    let baseScore = 0
+  private readonly now: () => number
 
-    if (record.status === 'urgent') baseScore += 50
-    if (ageDays > 30) baseScore += ageDays * 0.5
-
-    if (baseScore >= 80) return 'critical'
-    if (baseScore >= 50) return 'high'
-    if (baseScore >= 20) return 'medium'
-    return 'low'
+  constructor(options: ItemServiceOptions = {}) {
+    this.now = options.now ?? Date.now
   }
 
-  validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
-    const errors: string[] = []
-    if (!data.name?.trim()) errors.push('Name is required')
-    if (data.status && !['active', 'pending', 'completed'].includes(data.status)) {
-      errors.push('Invalid status')
-    }
-    return { valid: errors.length === 0, errors }
+  calculatePriority(record: Item): PriorityLevel {
+    return computePriority(record, this.now())
+  }
+
+  validate(data: Partial<Item>): ValidationResult {
+    return validateItem(data)
   }
 }
