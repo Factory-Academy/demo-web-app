@@ -49,6 +49,12 @@ describe('validators', () => {
       expect(validator(NaN, 'field')).toBe('field must be a number')
     })
 
+    test('rejects Infinity and -Infinity', () => {
+      const validator = validators.number()
+      expect(validator(Infinity, 'field')).toBe('field must be a number')
+      expect(validator(-Infinity, 'field')).toBe('field must be a number')
+    })
+
     test('validates integer constraint', () => {
       const validator = validators.number({ integer: true })
       expect(validator(42, 'field')).toBeNull()
@@ -101,6 +107,11 @@ describe('validators', () => {
       expect(validator(1, 'field')).toBeNull()
       expect(validator(4, 'field')).toBe('field must be one of: 1, 2, 3')
     })
+
+    test('rejects values when enum array is empty', () => {
+      const validator = validators.enum([])
+      expect(validator('anything', 'field')).toBe('field has no valid options')
+    })
   })
 
   describe('date', () => {
@@ -110,6 +121,19 @@ describe('validators', () => {
       expect(validator('2023-10-23T10:30:00Z', 'field')).toBeNull()
       expect(validator('invalid-date', 'field')).toBe('field must be a valid date')
       expect(validator(123, 'field')).toBe('field must be a date string')
+    })
+
+    test('rejects non-ISO date formats', () => {
+      const validator = validators.date()
+      expect(validator('123', 'field')).toBe('field must be a valid date')
+      expect(validator('10/23/2023', 'field')).toBe('field must be a valid date')
+      expect(validator('Oct 23, 2023', 'field')).toBe('field must be a valid date')
+    })
+
+    test('rejects empty and whitespace-only strings', () => {
+      const validator = validators.date()
+      expect(validator('', 'field')).toBe('field must be a valid date')
+      expect(validator('   ', 'field')).toBe('field must be a valid date')
     })
   })
 
@@ -228,6 +252,40 @@ describe('validate', () => {
     const result3 = validate({ optional: 'value', required: null } as any, schema)
     expect(result3.valid).toBe(false)
     expect(result3.errors).toContain('required is required')
+  })
+
+  test('skips validators for empty strings on optional fields', () => {
+    const schema = {
+      email: {
+        required: false,
+        validators: [
+          validators.string({ minLength: 5 }),
+          validators.custom<string>((val) => val.includes('@'), '{field} must contain @'),
+        ],
+      },
+    }
+
+    const result = validate({ email: '' }, schema)
+    expect(result.valid).toBe(true)
+    expect(result.errors).toHaveLength(0)
+  })
+
+  test('runs validators for empty strings on required fields that pass required check', () => {
+    const schema = {
+      code: {
+        required: false,
+        validators: [validators.string({ minLength: 3 })],
+      },
+    }
+
+    // Empty string should skip validators when optional
+    const result1 = validate({ code: '' }, schema)
+    expect(result1.valid).toBe(true)
+
+    // Non-empty string that fails should still fail
+    const result2 = validate({ code: 'ab' }, schema)
+    expect(result2.valid).toBe(false)
+    expect(result2.errors).toContain('code must be at least 3 characters')
   })
 })
 

@@ -39,7 +39,7 @@ export const validators = {
    */
   number: (options?: { min?: number; max?: number; integer?: boolean }): ValidatorFn => {
     return (value, fieldName) => {
-      if (typeof value !== 'number' || isNaN(value)) {
+      if (typeof value !== 'number' || isNaN(value) || !isFinite(value)) {
         return `${fieldName} must be a number`
       }
       if (options?.integer && !Number.isInteger(value)) {
@@ -72,6 +72,9 @@ export const validators = {
    */
   enum: <T extends string | number>(allowedValues: readonly T[]): ValidatorFn => {
     return (value, fieldName) => {
+      if (allowedValues.length === 0) {
+        return `${fieldName} has no valid options`
+      }
       if (!allowedValues.includes(value as T)) {
         return `${fieldName} must be one of: ${allowedValues.join(', ')}`
       }
@@ -86,6 +89,13 @@ export const validators = {
     return (value, fieldName) => {
       if (typeof value !== 'string') {
         return `${fieldName} must be a date string`
+      }
+      if (value.trim() === '') {
+        return `${fieldName} must be a valid date`
+      }
+      // Require ISO-like format: at least YYYY-MM-DD
+      if (!/^\d{4}-\d{2}-\d{2}/.test(value)) {
+        return `${fieldName} must be a valid date`
       }
       const date = new Date(value)
       if (isNaN(date.getTime())) {
@@ -138,6 +148,11 @@ function validateField<T>(
 
   // Skip validation if value is undefined/null and not required
   if (value === undefined || value === null) {
+    return errors
+  }
+
+  // Skip validation for empty strings on optional fields
+  if (!schema.required && value === '') {
     return errors
   }
 

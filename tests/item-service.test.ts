@@ -114,6 +114,23 @@ describe('ItemService', () => {
       expect(result.valid).toBe(true)
     })
 
+    test('accepts empty string for optional description', () => {
+      const result = service.validate({
+        name: 'Valid Name',
+        description: '',
+      })
+      expect(result.valid).toBe(true)
+      expect(result.errors).toHaveLength(0)
+    })
+
+    test('rejects name with only whitespace when provided', () => {
+      const result = service.validate({
+        name: '  \t\n  ',
+      })
+      expect(result.valid).toBe(false)
+      expect(result.errors.some((e) => e.includes('whitespace'))).toBe(true)
+    })
+
     test('collects multiple validation errors', () => {
       const result = service.validate({
         name: '',
@@ -208,6 +225,31 @@ describe('ItemService', () => {
       })
       expect(result.valid).toBe(false)
       expect(result.errors.some((e) => e.includes('description') && e.includes('1000'))).toBe(true)
+    })
+
+    test('accepts empty description for optional field', () => {
+      const result = service.validateForCreate({
+        name: 'Valid Name',
+        description: '',
+      })
+      expect(result.valid).toBe(true)
+      expect(result.errors).toHaveLength(0)
+    })
+
+    test('accepts undefined status for optional field', () => {
+      const result = service.validateForCreate({
+        name: 'Valid Name',
+        status: undefined,
+      })
+      expect(result.valid).toBe(true)
+    })
+
+    test('rejects name that becomes empty after trim', () => {
+      const result = service.validateForCreate({
+        name: '   \t   ',
+      })
+      expect(result.valid).toBe(false)
+      expect(result.errors.some((e) => e.toLowerCase().includes('whitespace') || e.includes('empty'))).toBe(true)
     })
   })
 })
