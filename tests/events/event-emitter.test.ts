@@ -158,6 +158,60 @@ describe('TypedEventEmitter — re-entrancy safety', () => {
     bus.emit('message', '1')
     expect(seen).toEqual(['a:1', 'b:1'])
   })
+
+  test('a once listener detached during emit before its turn does not fire', () => {
+    const bus = new TypedEventEmitter<Events>()
+    const second = jest.fn()
+    bus.on('done', () => bus.off('done', second))
+    bus.once('done', second)
+
+    bus.emit('done', undefined)
+    expect(second).not.toHaveBeenCalled()
+    expect(bus.listenerCount('done')).toBe(1)
+  })
+
+  test('a once listener cancelled via its handle during emit does not fire', () => {
+    const bus = new TypedEventEmitter<Events>()
+    const second = jest.fn()
+    let off: () => void = () => {}
+    bus.on('done', () => off())
+    off = bus.once('done', second)
+
+    bus.emit('done', undefined)
+    expect(second).not.toHaveBeenCalled()
+  })
+
+  test('removeAllListeners during emit cancels listeners not yet called', () => {
+    const bus = new TypedEventEmitter<Events>()
+    const second = jest.fn()
+    const third = jest.fn()
+    bus.on('done', () => bus.removeAllListeners('done'))
+    bus.on('done', second)
+    bus.once('done', third)
+
+    bus.emit('done', undefined)
+    expect(second).not.toHaveBeenCalled()
+    expect(third).not.toHaveBeenCalled()
+    expect(bus.listenerCount('done')).toBe(0)
+  })
+
+  test('clearing then re-subscribing during emit keeps the fresh listener', () => {
+    const bus = new TypedEventEmitter<Events>()
+    const late = jest.fn()
+    bus.on('message', () => {
+      bus.removeAllListeners('message')
+      bus.on('message', late)
+    })
+    bus.on('message', jest.fn())
+
+    bus.emit('message', '1')
+    expect(late).not.toHaveBeenCalled()
+    expect(bus.listenerCount('message')).toBe(1)
+
+    bus.emit('message', '2')
+    expect(late).toHaveBeenCalledTimes(1)
+    expect(late).toHaveBeenCalledWith('2')
+  })
 })
 
 describe('TypedEventEmitter — listener errors', () => {

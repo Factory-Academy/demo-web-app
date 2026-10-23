@@ -91,7 +91,11 @@ index), then exactly one terminal `request:success` or `request:error`. Pass
 - **Re-entrancy safety**: `emit` iterates a snapshot, so subscribing or
   unsubscribing from inside a listener never disturbs the in-flight dispatch.
   A listener added during an emit runs on the *next* emit; one removed during
-  an emit is skipped if it had not yet been called.
+  an emit is skipped if it had not yet been called. This holds for every way a
+  listener can be detached mid-dispatch — `off`, an unsubscribe handle, or
+  `removeAllListeners` — and for `once` listeners as well as plain ones. If a
+  listener clears the event and immediately re-subscribes, the fresh listener
+  survives the emit and runs on the next one.
 - **Listener isolation**: a throwing listener never stops the others. With an
   `onError` handler the error is routed there (with `{ event, payload }`
   context); without one, the first error is rethrown wrapped in

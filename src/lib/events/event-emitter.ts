@@ -116,9 +116,12 @@ export class TypedEventEmitter<Events extends EventMap> {
     let firstError: { error: unknown } | undefined
 
     for (const reg of snapshot) {
-      // Skip listeners a prior listener removed during this same emit. `once`
-      // listeners were already removed by us, so re-check only survives here.
-      if (!reg.once && !regs.has(reg)) continue
+      // Skip any listener a prior listener detached during this same emit —
+      // whether via `off`, its unsubscribe handle, or `removeAllListeners`.
+      // The live set is the single source of truth, so this applies to `once`
+      // listeners too. A surviving `once` listener is removed just before it
+      // runs, so a re-entrant re-emit cannot deliver it twice.
+      if (!regs.has(reg)) continue
       if (reg.once) regs.delete(reg)
 
       try {
@@ -132,7 +135,11 @@ export class TypedEventEmitter<Events extends EventMap> {
       }
     }
 
-    if (regs.size === 0) this.registry.delete(event)
+    // Only prune the entry we were dispatching. A listener may have cleared and
+    // re-subscribed during the emit, installing a fresh set we must not drop.
+    if (regs.size === 0 && this.registry.get(event) === regs) {
+      this.registry.delete(event)
+    }
 
     if (firstError) {
       throw new ListenerInvocationError(event, firstError.error)
@@ -160,10 +167,17 @@ export class TypedEventEmitter<Events extends EventMap> {
   /** Remove all listeners for one event, or for every event when omitted. */
   removeAllListeners<K extends EventKey<Events>>(event?: K): void {
     if (event === undefined) {
+      // Empty each set as well as the map so an in-flight `emit` holding a
+      // reference to one of these sets sees its pending listeners cancelled.
+      for (const regs of this.registry.values()) regs.clear()
       this.registry.clear()
       return
     }
-    this.registry.delete(event)
+    const regs = this.registry.get(event)
+    if (regs) {
+      regs.clear()
+      this.registry.delete(event)
+    }
   }
 
   /**
