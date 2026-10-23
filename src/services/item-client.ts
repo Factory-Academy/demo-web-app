@@ -4,6 +4,7 @@ import {
   ResilientExecutor,
   TimeoutError,
 } from '@/lib/resilience'
+import { TypedEventEmitter } from '@/lib/events'
 
 /** Error carrying the HTTP status for a non-2xx response. */
 export class HttpError extends Error {
@@ -47,6 +48,19 @@ export function isRetryableError(error: unknown): boolean {
   return false
 }
 
+/**
+ * Lifecycle events emitted by an {@link ItemClient}. One `request:start` is
+ * emitted per logical request, followed by zero or more `request:retry` (one
+ * per re-attempt), and finally exactly one terminal `request:success` or
+ * `request:error`.
+ */
+export interface ItemClientEvents {
+  'request:start': { method: string; url: string }
+  'request:retry': { method: string; url: string; attempt: number }
+  'request:success': { method: string; url: string; durationMs: number }
+  'request:error': { method: string; url: string; error: unknown; durationMs: number }
+}
+
 export interface ItemClientOptions {
   /** Prefix for request URLs. Empty string targets the same origin. */
   baseUrl?: string
@@ -58,6 +72,8 @@ export interface ItemClientOptions {
   retries?: number
   /** Supply a pre-built executor (e.g. shared breaker, custom sleep). */
   executor?: ResilientExecutor
+  /** Supply a pre-built emitter (e.g. to share one bus across clients). */
+  events?: TypedEventEmitter<ItemClientEvents>
 }
 
 /**
@@ -70,8 +86,15 @@ export class ItemClient {
   private readonly fetchImpl: typeof fetch
   private readonly executor: ResilientExecutor
 
+  /**
+   * Observable request lifecycle. Subscribe to surface retries, latency, and
+   * failures without the client needing to know about logging or metrics.
+   */
+  readonly events: TypedEventEmitter<ItemClientEvents>
+
   constructor(options: ItemClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? ''
+    this.events = options.events ?? new TypedEventEmitter<ItemClientEvents>()
 
     const rawFetch = options.fetchImpl ?? fetch
     // Preserve correct `this` for the global fetch to avoid "Illegal
@@ -103,26 +126,63 @@ export class ItemClient {
 
   /** Fetch all items. */
   listItems(signal?: AbortSignal): Promise<Item[]> {
-    return this.executor.execute(async () => {
-      const res = await this.fetchImpl(this.url('/api/items'), {
-        method: 'GET',
-        signal,
-      })
-      return this.parse<Item[]>(res)
-    })
+    return this.request('GET', '/api/items', () =>
+      this.fetchImpl(this.url('/api/items'), { method: 'GET', signal }),
+    )
   }
 
   /** Create a new item. */
   createItem(input: ItemCreate, signal?: AbortSignal): Promise<Item> {
-    return this.executor.execute(async () => {
-      const res = await this.fetchImpl(this.url('/api/items'), {
+    return this.request('POST', '/api/items', () =>
+      this.fetchImpl(this.url('/api/items'), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(input),
         signal,
+      }),
+    )
+  }
+
+  /**
+   * Run one logical request through the resilient executor while emitting the
+   * {@link ItemClientEvents} lifecycle. The `attempt` index supplied by the
+   * retry loop drives `request:retry` (attempt 0 is the initial try), so
+   * retries are reported even when a custom executor is injected.
+   */
+  private request<T>(
+    method: string,
+    path: string,
+    send: () => Promise<Response>,
+  ): Promise<T> {
+    const url = this.url(path)
+    const startedAt = Date.now()
+    this.events.emit('request:start', { method, url })
+
+    return this.executor
+      .execute(async (attempt) => {
+        if (attempt > 0) this.events.emit('request:retry', { method, url, attempt })
+        const res = await send()
+        return this.parse<T>(res)
       })
-      return this.parse<Item>(res)
-    })
+      .then(
+        (result) => {
+          this.events.emit('request:success', {
+            method,
+            url,
+            durationMs: Date.now() - startedAt,
+          })
+          return result
+        },
+        (error) => {
+          this.events.emit('request:error', {
+            method,
+            url,
+            error,
+            durationMs: Date.now() - startedAt,
+          })
+          throw error
+        },
+      )
   }
 
   private url(path: string): string {
