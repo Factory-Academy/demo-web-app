@@ -1,4 +1,5 @@
 import { Item } from '@/models/item'
+import { ValidationError } from '@/utils/errors'
 
 export class ItemService {
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
@@ -15,12 +16,31 @@ export class ItemService {
     return 'low'
   }
 
-  validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
+  /**
+   * Validate item data. Throws {@link ValidationError} if any rules fail,
+   * otherwise returns silently.
+   */
+  validate(data: Partial<Item>): void {
     const errors: string[] = []
     if (!data.name?.trim()) errors.push('Name is required')
     if (data.status && !['active', 'pending', 'completed'].includes(data.status)) {
       errors.push('Invalid status')
     }
-    return { valid: errors.length === 0, errors }
+    if (errors.length > 0) {
+      throw new ValidationError(errors)
+    }
+  }
+
+  /**
+   * Validate and return a boolean result without throwing. Useful for
+   * checking validity without requiring try/catch blocks.
+   */
+  isValid(data: Partial<Item>): boolean {
+    try {
+      this.validate(data)
+      return true
+    } catch (error) {
+      return error instanceof ValidationError ? false : true
+    }
   }
 }
