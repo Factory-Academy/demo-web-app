@@ -1,8 +1,18 @@
 import { Item } from '@/models/item'
+import { ValidationError, requirePresent, requireNonEmpty } from '@/lib/validation-error'
 
 export class ItemService {
   calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
+    requirePresent(record, 'Record is required')
+    requirePresent(record.createdAt, 'Record createdAt is required')
+    requirePresent(record.status, 'Record status is required')
+
+    const timestamp = new Date(record.createdAt).getTime()
+    if (isNaN(timestamp)) {
+      ValidationError.throw('Invalid createdAt timestamp')
+    }
+
+    const ageMs = Date.now() - timestamp
     const ageDays = Math.floor(ageMs / 86400000)
     let baseScore = 0
 
@@ -15,12 +25,19 @@ export class ItemService {
     return 'low'
   }
 
-  validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
+  validate(data: Partial<Item>): void {
     const errors: string[] = []
-    if (!data.name?.trim()) errors.push('Name is required')
-    if (data.status && !['active', 'pending', 'completed'].includes(data.status)) {
+
+    if (!data.name?.trim()) {
+      errors.push('Name is required')
+    }
+
+    if (data.status && !['active', 'pending', 'completed', 'urgent'].includes(data.status)) {
       errors.push('Invalid status')
     }
-    return { valid: errors.length === 0, errors }
+
+    if (errors.length > 0) {
+      ValidationError.throwAll(errors)
+    }
   }
 }
