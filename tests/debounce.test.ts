@@ -55,4 +55,21 @@ describe('debounce', () => {
     expect(spy).toHaveBeenCalledWith('ok-done')
     jest.useRealTimers()
   })
+
+  test('treats negative delay as 0', () => {
+    jest.useFakeTimers()
+
+    const fn = jest.fn()
+    const debounced = debounce(fn, -10)
+
+    debounced('first')
+    debounced('second')
+    expect(fn).not.toHaveBeenCalled()
+
+    jest.advanceTimersByTime(0)
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(fn).toHaveBeenCalledWith('second')
+
+    jest.useRealTimers()
+  })
 })
