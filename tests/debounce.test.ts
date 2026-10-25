@@ -36,4 +36,23 @@ describe('debounce', () => {
     setTimeoutSpy.mockRestore()
     clearTimeoutSpy.mockRestore()
   })
+
+  test('preserves `this` when invoking the wrapped function', () => {
+    jest.useFakeTimers()
+
+    const obj = {
+      value: 'ok',
+      fn(this: { value: string }, suffix: string) {
+        spy(`${this.value}-${suffix}`)
+      },
+    }
+    const spy = jest.fn()
+    obj.fn = debounce(obj.fn, 50)
+
+    obj.fn('done')
+    jest.advanceTimersByTime(50)
+
+    expect(spy).toHaveBeenCalledWith('ok-done')
+    jest.useRealTimers()
+  })
 })
