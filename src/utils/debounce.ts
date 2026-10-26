@@ -23,6 +23,10 @@
  * ```
  */
 export function debounce<T extends (...args: unknown[]) => void>(fn: T, delayMs: number) {
+  if (delayMs < 0) {
+    throw new Error('Delay must be non-negative')
+  }
+
   let timeoutId: ReturnType<typeof setTimeout> | undefined
 
   return (...args: Parameters<T>) => {

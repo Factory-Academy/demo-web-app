@@ -36,4 +36,26 @@ describe('debounce', () => {
     setTimeoutSpy.mockRestore()
     clearTimeoutSpy.mockRestore()
   })
+
+  test('throws error for negative delay', () => {
+    const fn = jest.fn()
+    expect(() => debounce(fn, -1)).toThrow('Delay must be non-negative')
+    expect(() => debounce(fn, -100)).toThrow('Delay must be non-negative')
+  })
+
+  test('accepts zero delay', () => {
+    jest.useFakeTimers()
+
+    const fn = jest.fn()
+    const debounced = debounce(fn, 0)
+
+    debounced('immediate')
+    expect(fn).not.toHaveBeenCalled()
+
+    jest.advanceTimersByTime(0)
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(fn).toHaveBeenCalledWith('immediate')
+
+    jest.useRealTimers()
+  })
 })
