@@ -4,6 +4,7 @@ import {
   ResilientExecutor,
   TimeoutError,
 } from '@/lib/resilience'
+import { LruCache } from '@/utils/lru-cache'
 
 /** Error carrying the HTTP status for a non-2xx response. */
 export class HttpError extends Error {
@@ -58,17 +59,21 @@ export interface ItemClientOptions {
   retries?: number
   /** Supply a pre-built executor (e.g. shared breaker, custom sleep). */
   executor?: ResilientExecutor
+  /** Enable caching for listItems with optional TTL. Disabled by default. */
+  cacheListItemsTtlMs?: number
 }
 
 /**
  * HTTP client for the items API, hardened with retry-with-backoff and a
  * circuit breaker. Every request flows through {@link ResilientExecutor} so
  * transient failures are retried and a struggling backend trips the breaker.
+ * Optionally caches listItems responses with an LRU cache and TTL.
  */
 export class ItemClient {
   private readonly baseUrl: string
   private readonly fetchImpl: typeof fetch
   private readonly executor: ResilientExecutor
+  private readonly listItemsCache?: LruCache<'__list__', Item[]>
 
   constructor(options: ItemClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? ''
@@ -99,16 +104,36 @@ export class ItemClient {
           openDurationMs: 10_000,
         },
       })
+
+    // Initialize cache if TTL is configured
+    if (options.cacheListItemsTtlMs !== undefined) {
+      this.listItemsCache = new LruCache<'__list__', Item[]>(1, options.cacheListItemsTtlMs)
+    }
   }
 
-  /** Fetch all items. */
+  /** Fetch all items. Results are cached if caching is enabled. */
   listItems(signal?: AbortSignal): Promise<Item[]> {
+    // Check cache first if it's enabled
+    if (this.listItemsCache) {
+      const cached = this.listItemsCache.get('__list__')
+      if (cached !== undefined) {
+        return Promise.resolve(cached)
+      }
+    }
+
     return this.executor.execute(async () => {
       const res = await this.fetchImpl(this.url('/api/items'), {
         method: 'GET',
         signal,
       })
-      return this.parse<Item[]>(res)
+      const items = await this.parse<Item[]>(res)
+
+      // Store in cache if it's enabled
+      if (this.listItemsCache) {
+        this.listItemsCache.set('__list__', items)
+      }
+
+      return items
     })
   }
 

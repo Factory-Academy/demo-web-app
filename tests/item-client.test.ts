@@ -140,3 +140,89 @@ describe('ItemClient', () => {
     expect((fetchImpl as jest.Mock).mock.calls.length).toBe(3) // no new request
   })
 })
+
+describe('ItemClient with caching', () => {
+  const sample = { id: '1', name: 'A', status: 'active', createdAt: '', updatedAt: '' }
+
+  test('caches listItems results when cache TTL is configured', async () => {
+    const fetchImpl = fetchReturning(jsonResponse([sample]))
+    const client = new ItemClient({
+      fetchImpl,
+      executor: fastExecutor(),
+      cacheListItemsTtlMs: 5000,
+    })
+
+    // First call should fetch
+    const result1 = await client.listItems()
+    expect(result1).toEqual([sample])
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+
+    // Second call should use cache
+    const result2 = await client.listItems()
+    expect(result2).toEqual([sample])
+    expect(fetchImpl).toHaveBeenCalledTimes(1) // still just one call
+  })
+
+  test('does not cache when cache TTL is not configured', async () => {
+    const fetchImpl = fetchReturning(
+      jsonResponse([sample]),
+      jsonResponse([sample]),
+    )
+    const client = new ItemClient({
+      fetchImpl,
+      executor: fastExecutor(),
+    })
+
+    // Without cache, each call should fetch
+    await client.listItems()
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+
+    await client.listItems()
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  test('cache respects TTL expiration', async () => {
+    jest.useFakeTimers()
+
+    const fetchImpl = fetchReturning(
+      jsonResponse([sample]),
+      jsonResponse([sample]),
+    )
+    const client = new ItemClient({
+      fetchImpl,
+      executor: fastExecutor(),
+      cacheListItemsTtlMs: 1000, // 1 second TTL
+    })
+
+    // First call caches result
+    await client.listItems()
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+
+    // Within TTL, uses cache
+    jest.advanceTimersByTime(500)
+    await client.listItems()
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+
+    // After TTL expires, fetches again
+    jest.advanceTimersByTime(600) // now 1100ms total
+    await client.listItems()
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+
+    jest.useRealTimers()
+  })
+
+  test('cache stores exact response without mutation', async () => {
+    const fetchImpl = fetchReturning(jsonResponse([sample]))
+    const client = new ItemClient({
+      fetchImpl,
+      executor: fastExecutor(),
+      cacheListItemsTtlMs: 5000,
+    })
+
+    const result1 = await client.listItems()
+    const result2 = await client.listItems()
+
+    expect(result1).toBe(result2) // same reference
+    expect(result1).toEqual([sample])
+  })
+})
