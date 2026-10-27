@@ -1,8 +1,8 @@
 /** @type {import('jest').Config} */
 module.exports = {
-  testEnvironment: 'node',
+  testEnvironment: 'jsdom',
   roots: ['<rootDir>/tests'],
-  testMatch: ['**/*.test.ts'],
+  testMatch: ['**/*.test.ts', '**/*.test.tsx'],
   moduleNameMapper: {
     // Mirror the `@/*` alias from tsconfig.json.
     '^@/(.*)$': '<rootDir>/src/$1',
