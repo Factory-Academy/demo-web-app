@@ -139,4 +139,97 @@ describe('ItemClient', () => {
     expect(second).toBeInstanceOf(CircuitOpenError)
     expect((fetchImpl as jest.Mock).mock.calls.length).toBe(3) // no new request
   })
+
+  describe('listItemsCursor', () => {
+    test('fetches items with cursor and limit parameters', async () => {
+      const response = {
+        items: [sample],
+        nextCursor: 'next-token',
+        hasMore: true,
+      }
+      const fetchImpl = fetchReturning(jsonResponse(response))
+      const client = new ItemClient({ fetchImpl, executor: fastExecutor() })
+
+      const result = await client.listItemsCursor({ cursor: 'abc', limit: 10 })
+
+      expect(result).toEqual(response)
+      const [url] = (fetchImpl as jest.Mock).mock.calls[0]
+      expect(url).toContain('cursor=abc')
+      expect(url).toContain('limit=10')
+    })
+
+    test('fetches first page without cursor', async () => {
+      const response = {
+        items: [sample],
+        nextCursor: 'page2',
+        hasMore: true,
+      }
+      const fetchImpl = fetchReturning(jsonResponse(response))
+      const client = new ItemClient({ fetchImpl, executor: fastExecutor() })
+
+      const result = await client.listItemsCursor({ limit: 20 })
+
+      expect(result).toEqual(response)
+      const [url] = (fetchImpl as jest.Mock).mock.calls[0]
+      expect(url).not.toContain('cursor=')
+      expect(url).toContain('limit=20')
+    })
+
+    test('handles last page with null nextCursor', async () => {
+      const response = {
+        items: [sample],
+        nextCursor: null,
+        hasMore: false,
+      }
+      const fetchImpl = fetchReturning(jsonResponse(response))
+      const client = new ItemClient({ fetchImpl, executor: fastExecutor() })
+
+      const result = await client.listItemsCursor({ limit: 10 })
+
+      expect(result.hasMore).toBe(false)
+      expect(result.nextCursor).toBeNull()
+    })
+
+    test('validates limit and throws on zero', () => {
+      const fetchImpl = fetchReturning(jsonResponse({ items: [], nextCursor: null, hasMore: false }))
+      const client = new ItemClient({ fetchImpl, executor: fastExecutor() })
+
+      expect(() => client.listItemsCursor({ limit: 0 })).toThrow('Limit must be greater than 0')
+      expect(fetchImpl).not.toHaveBeenCalled()
+    })
+
+    test('validates limit and throws on negative value', () => {
+      const fetchImpl = fetchReturning(jsonResponse({ items: [], nextCursor: null, hasMore: false }))
+      const client = new ItemClient({ fetchImpl, executor: fastExecutor() })
+
+      expect(() => client.listItemsCursor({ limit: -1 })).toThrow('Limit must be greater than 0')
+      expect(fetchImpl).not.toHaveBeenCalled()
+    })
+
+    test('validates limit and throws when exceeding max', () => {
+      const fetchImpl = fetchReturning(jsonResponse({ items: [], nextCursor: null, hasMore: false }))
+      const client = new ItemClient({ fetchImpl, executor: fastExecutor() })
+
+      expect(() => client.listItemsCursor({ limit: 150 })).toThrow('Limit must not exceed 100')
+      expect(fetchImpl).not.toHaveBeenCalled()
+    })
+
+    test('retries transient errors like the base listItems', async () => {
+      const response = {
+        items: [sample],
+        nextCursor: null,
+        hasMore: false,
+      }
+      const fetchImpl = fetchReturning(
+        jsonResponse(null, { status: 503 }),
+        jsonResponse(response),
+      )
+      const client = new ItemClient({ fetchImpl, executor: fastExecutor() })
+
+      const result = await client.listItemsCursor({ limit: 10 })
+
+      expect(result).toEqual(response)
+      expect(fetchImpl).toHaveBeenCalledTimes(2)
+    })
+  })
 })

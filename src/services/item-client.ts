@@ -4,6 +4,12 @@ import {
   ResilientExecutor,
   TimeoutError,
 } from '@/lib/resilience'
+import {
+  buildCursorQueryParams,
+  CursorPaginatedResponse,
+  CursorPaginationParams,
+  validateCursorParams,
+} from '@/lib/cursor-pagination'
 
 /** Error carrying the HTTP status for a non-2xx response. */
 export class HttpError extends Error {
@@ -109,6 +115,29 @@ export class ItemClient {
         signal,
       })
       return this.parse<Item[]>(res)
+    })
+  }
+
+  /**
+   * Fetch items using cursor-based pagination.
+   * Returns a page of items along with a cursor for fetching the next page.
+   */
+  listItemsCursor(
+    params: CursorPaginationParams,
+    signal?: AbortSignal,
+  ): Promise<CursorPaginatedResponse<Item>> {
+    validateCursorParams(params)
+    
+    return this.executor.execute(async () => {
+      const queryParams = buildCursorQueryParams(params)
+      const res = await this.fetchImpl(
+        this.url(`/api/items?${queryParams.toString()}`),
+        {
+          method: 'GET',
+          signal,
+        },
+      )
+      return this.parse<CursorPaginatedResponse<Item>>(res)
     })
   }
 
