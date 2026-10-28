@@ -1,4 +1,5 @@
 import { Item } from '@/models/item'
+import { UI_LABELS } from '@/config/constants'
 
 interface ItemListProps {
   items: Item[]
@@ -6,7 +7,7 @@ interface ItemListProps {
 
 export function ItemList({ items }: ItemListProps) {
   if (items.length === 0) {
-    return <p className="text-gray-500">No items found.</p>
+    return <p className={UI_LABELS.NO_ITEMS_FOUND_CLASS}>{UI_LABELS.NO_ITEMS_FOUND}</p>
   }
 
   return (
