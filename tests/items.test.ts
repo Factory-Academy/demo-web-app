@@ -15,6 +15,17 @@ describe('ItemService', () => {
     expect(result.valid).toBe(true)
   })
 
+  test('validate accepts urgent status', () => {
+    const result = service.validate({ name: 'Test', status: 'urgent' })
+    expect(result.valid).toBe(true)
+  })
+
+  test('validate rejects invalid status', () => {
+    const result = service.validate({ name: 'Test', status: 'invalid' })
+    expect(result.valid).toBe(false)
+    expect(result.errors).toContain('Invalid status')
+  })
+
   test('calculatePriority returns critical for urgent old items', () => {
     const item: Item = {
       id: '1',
