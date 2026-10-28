@@ -64,3 +64,38 @@ normalization code so tests are deterministic without mocking the clock.
 
 `jest.config.js` uses `next/jest` so TS/TSX transform and the `@/*` path alias
 resolve the same way they do in the app.
+
+## Follow-up: tightening the instant + string edges (review feedback)
+
+Review of the first pass surfaced two edge cases the original fix still let
+through, both in the same "a malformed field poisons the transform" family:
+
+1. **Finite-but-unrepresentable numeric timestamps crashed normalization.**
+   `parseTimestamp` only checked `Number.isFinite`, so a value like `1e300`
+   passed through, and `new Date(1e300).toISOString()` throws a `RangeError`.
+   A single bad epoch number in a `POST /api/items` body would therefore turn
+   a 400-worthy record into a 500.
+2. **String truncation split surrogate pairs.** `toSafeString` sliced on UTF-16
+   code units, so an oversized value ending in an astral codepoint (emoji, etc.)
+   left a lone high surrogate — a corrupted trailing character.
+
+### What changed
+
+- Added `src/services/time.ts` as the single source of truth for instants:
+  `MS_PER_DAY`, `MAX_TIMESTAMP_MS`, `isValidInstant`, `parseInstant`, and a
+  non-throwing `toIsoString`. `parseInstant` rejects finite numbers outside the
+  representable `Date` range in addition to `NaN`/`Infinity`.
+- `priority.ts` now imports `MS_PER_DAY` and re-exports `parseTimestamp` from
+  the shared module, so scoring and normalization agree on what a usable
+  timestamp is. The public API is unchanged.
+- `item-transform.ts` converts timestamps via `toIsoString` (falling back
+  instead of throwing) and truncates strings without orphaning a surrogate,
+  re-trimming whitespace exposed by the cut.
+
+### Tests
+
+- `tests/time.test.ts` — range validation, `parseInstant`, and the
+  non-throwing `toIsoString`.
+- Extended `tests/priority.test.ts` (out-of-range numbers → `null` / age `0`)
+  and `tests/item-transform.test.ts` (surrogate-safe truncation, out-of-range
+  timestamp falls back without throwing).

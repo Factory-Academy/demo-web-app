@@ -23,6 +23,22 @@ describe('toSafeString', () => {
   test('truncates to the maximum length', () => {
     expect(toSafeString('abcdef', 3)).toBe('abc')
   })
+
+  test('does not split a surrogate pair at the cut point', () => {
+    // '😀' is two UTF-16 code units; a naive slice(0, 3) would leave a lone
+    // high surrogate. The whole codepoint is dropped instead.
+    const result = toSafeString('ab😀cd', 3)
+    expect(result).toBe('ab')
+    expect(result).not.toMatch(/[\uD800-\uDBFF]/)
+  })
+
+  test('keeps a surrogate pair that fits exactly within the limit', () => {
+    expect(toSafeString('a😀', 3)).toBe('a😀')
+  })
+
+  test('trims whitespace exposed by truncation', () => {
+    expect(toSafeString('ab   cd', 4)).toBe('ab')
+  })
 })
 
 describe('normalizeStatus', () => {
@@ -46,6 +62,13 @@ describe('normalizeTimestamp', () => {
   test('falls back to the provided instant for malformed input', () => {
     expect(normalizeTimestamp('garbage', NOW)).toBe(new Date(NOW).toISOString())
     expect(normalizeTimestamp(undefined, NOW)).toBe(new Date(NOW).toISOString())
+  })
+
+  test('falls back instead of throwing on an out-of-range numeric instant', () => {
+    // new Date(1e300).toISOString() throws a RangeError; normalization must
+    // degrade to the fallback rather than crash the request.
+    expect(() => normalizeTimestamp(1e300, NOW)).not.toThrow()
+    expect(normalizeTimestamp(1e300, NOW)).toBe(new Date(NOW).toISOString())
   })
 })
 
@@ -75,6 +98,19 @@ describe('normalizeItem', () => {
   test('truncates oversized strings rather than dropping the record', () => {
     const result = normalizeItem({ name: 'x'.repeat(MAX_NAME_LENGTH + 50) }, NOW)
     expect(result.name).toHaveLength(MAX_NAME_LENGTH)
+  })
+
+  test('truncates an oversized name without orphaning a surrogate', () => {
+    const name = 'x'.repeat(MAX_NAME_LENGTH - 1) + '😀😀'
+    const result = normalizeItem({ name }, NOW)
+    expect(result.name).toHaveLength(MAX_NAME_LENGTH - 1)
+    expect(result.name).not.toMatch(/[\uD800-\uDBFF]/)
+  })
+
+  test('does not throw on an out-of-range numeric timestamp', () => {
+    const nowIso = new Date(NOW).toISOString()
+    expect(() => normalizeItem({ name: 'ok', createdAt: 1e300 }, NOW)).not.toThrow()
+    expect(normalizeItem({ name: 'ok', createdAt: 1e300 }, NOW).createdAt).toBe(nowIso)
   })
 
   test('preserves a well-formed record', () => {

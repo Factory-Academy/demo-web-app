@@ -35,6 +35,10 @@ describe('parseTimestamp', () => {
     expect(parseTimestamp(Infinity)).toBeNull()
   })
 
+  test('returns null for finite numbers outside the Date range', () => {
+    expect(parseTimestamp(1e300)).toBeNull()
+  })
+
   test('returns null for non-string, non-number input', () => {
     expect(parseTimestamp(null)).toBeNull()
     expect(parseTimestamp(undefined)).toBeNull()
@@ -59,6 +63,10 @@ describe('computeAgeInDays', () => {
 
   test('clamps absurdly old timestamps to MAX_AGE_DAYS', () => {
     expect(computeAgeInDays('0001-01-01T00:00:00.000Z', NOW)).toBe(MAX_AGE_DAYS)
+  })
+
+  test('treats an out-of-range numeric timestamp as age 0', () => {
+    expect(computeAgeInDays(1e300, NOW)).toBe(0)
   })
 })
 

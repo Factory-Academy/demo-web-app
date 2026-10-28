@@ -1,4 +1,5 @@
 import { Item } from '@/models/item'
+import { MS_PER_DAY, parseInstant } from '@/services/time'
 
 export type Priority = 'critical' | 'high' | 'medium' | 'low'
 
@@ -25,23 +26,13 @@ export const AGE_SCORE_PER_DAY = 0.5
  */
 export const MAX_AGE_DAYS = 3650
 
-const MS_PER_DAY = 86_400_000
-
 /**
- * Parse a timestamp from a string or epoch-millis number. Returns `null` for
- * anything that cannot be resolved to a finite instant (malformed strings,
- * `NaN`, `Infinity`, objects, `null`/`undefined`).
+ * Parse a timestamp into a representable instant, or `null` when it cannot be
+ * resolved. Re-exported from the shared time module so scoring and
+ * normalization agree on exactly what counts as a usable timestamp (including
+ * rejecting finite-but-out-of-`Date`-range numbers).
  */
-export function parseTimestamp(value: unknown): number | null {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null
-  }
-  if (typeof value === 'string') {
-    const ms = Date.parse(value)
-    return Number.isNaN(ms) ? null : ms
-  }
-  return null
-}
+export const parseTimestamp = parseInstant
 
 /**
  * Age of a record in whole days, clamped to `[0, MAX_AGE_DAYS]`.
