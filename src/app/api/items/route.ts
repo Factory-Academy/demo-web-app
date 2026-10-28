@@ -1,21 +1,13 @@
 import { NextResponse } from 'next/server'
-import { Item } from '@/models/item'
-
-const items: Item[] = []
-let nextId = 1
+import { itemQueueService } from '@/services/item-queue-service'
 
 export async function GET() {
+  const items = await itemQueueService.getAll()
   return NextResponse.json(items)
 }
 
 export async function POST(request: Request) {
   const data = await request.json()
-  const item: Item = {
-    ...data,
-    id: String(nextId++),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-  items.push(item)
+  const item = await itemQueueService.create(data)
   return NextResponse.json(item, { status: 201 })
 }
