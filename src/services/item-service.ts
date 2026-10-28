@@ -1,26 +1,24 @@
 import { Item } from '@/models/item'
+import { Priority, calculatePriority } from '@/services/priority'
+import { ValidationResult, validateItem } from '@/services/validation'
+import { NormalizedItem, normalizeItem } from '@/services/item-transform'
 
+/**
+ * Business logic for the primary model. This is a thin facade: the scoring,
+ * validation, and normalization rules live in focused, independently tested
+ * modules (`priority`, `validation`, `item-transform`).
+ */
 export class ItemService {
-  calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
-    const ageDays = Math.floor(ageMs / 86400000)
-    let baseScore = 0
-
-    if (record.status === 'urgent') baseScore += 50
-    if (ageDays > 30) baseScore += ageDays * 0.5
-
-    if (baseScore >= 80) return 'critical'
-    if (baseScore >= 50) return 'high'
-    if (baseScore >= 20) return 'medium'
-    return 'low'
+  calculatePriority(record: Partial<Item> | null | undefined): Priority {
+    return calculatePriority(record)
   }
 
-  validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
-    const errors: string[] = []
-    if (!data.name?.trim()) errors.push('Name is required')
-    if (data.status && !['active', 'pending', 'completed'].includes(data.status)) {
-      errors.push('Invalid status')
-    }
-    return { valid: errors.length === 0, errors }
+  validate(data: Partial<Item> | null | undefined): ValidationResult {
+    return validateItem(data)
+  }
+
+  /** Coerce arbitrary input into a safe, well-typed record. */
+  normalize(raw: unknown): NormalizedItem {
+    return normalizeItem(raw)
   }
 }
