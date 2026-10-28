@@ -26,8 +26,9 @@ export const schemaLite = {
     }
   },
 
-  optionalString(options?: { trim?: boolean }): FieldRule<string | undefined> {
+  optionalString(options?: { trim?: boolean; allowEmpty?: boolean }): FieldRule<string | undefined> {
     const trim = options?.trim ?? false
+    const allowEmpty = options?.allowEmpty ?? true
 
     return (value, fieldName) => {
       if (value === undefined || value === null) {
@@ -38,7 +39,12 @@ export const schemaLite = {
         return { success: false, errors: [`${fieldName} must be a string`] }
       }
 
-      return { success: true, data: trim ? value.trim() : value }
+      const nextValue = trim ? value.trim() : value
+      if (!allowEmpty && nextValue.length === 0) {
+        return { success: false, errors: [`${fieldName} cannot be empty`] }
+      }
+
+      return { success: true, data: nextValue }
     }
   },
 

@@ -17,6 +17,14 @@ describe('validateItemCreate', () => {
     expect(result.errors).toContain('status must be one of: active, pending, completed')
   })
 
+  test('rejects an empty description when provided', () => {
+    const result = validateItemCreate({ name: 'Task', description: '   ' })
+
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(result.errors).toContain('description cannot be empty')
+  })
+
   test('accepts valid input and trims fields', () => {
     const result = validateItemCreate({
       name: '  Task  ',

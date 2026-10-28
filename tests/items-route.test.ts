@@ -15,6 +15,20 @@ describe('POST /api/items', () => {
     expect(payload.errors).toContain('status must be one of: active, pending, completed')
   })
 
+  test('returns 400 when description is only whitespace', async () => {
+    const request = new Request('http://localhost/api/items', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Task', description: '   ' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await POST(request)
+    const payload = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(payload.errors).toContain('description cannot be empty')
+  })
+
   test('creates an item and defaults status to pending', async () => {
     const request = new Request('http://localhost/api/items', {
       method: 'POST',
