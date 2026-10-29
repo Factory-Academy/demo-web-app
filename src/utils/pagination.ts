@@ -35,14 +35,15 @@ export function paginate<T extends { id: string }>(
   config: PaginationConfig = DEFAULT_CONFIG
 ): PaginatedResult<T> {
   const { cursor, limit: requestedLimit } = options
-  const limit = Math.min(
-    requestedLimit ?? config.defaultLimit,
-    config.maxLimit
-  )
+  
+  // Ensure limit is at least 1 and respect max limit
+  const effectiveLimit = requestedLimit ?? config.defaultLimit
+  const limit = Math.max(1, Math.min(effectiveLimit, config.maxLimit))
 
   // Find the starting index based on cursor
+  // Treat empty or whitespace-only cursors as no cursor
   let startIndex = 0
-  if (cursor) {
+  if (cursor && cursor.trim()) {
     const cursorIndex = items.findIndex(item => item.id === cursor)
     if (cursorIndex !== -1) {
       startIndex = cursorIndex + 1
@@ -77,12 +78,22 @@ export function paginate<T extends { id: string }>(
 export function parsePaginationParams(
   searchParams: URLSearchParams
 ): PaginationOptions {
-  const cursor = searchParams.get('cursor') ?? undefined
+  const cursorParam = searchParams.get('cursor')
+  const cursor = cursorParam && cursorParam.trim() ? cursorParam : undefined
+  
   const limitStr = searchParams.get('limit')
-  const limit = limitStr ? parseInt(limitStr, 10) : undefined
+  let limit: number | undefined = undefined
+  
+  if (limitStr) {
+    const parsed = parseInt(limitStr, 10)
+    // Only accept positive integers
+    if (!isNaN(parsed) && parsed > 0) {
+      limit = parsed
+    }
+  }
 
   return {
     cursor,
-    limit: limit && !isNaN(limit) ? limit : undefined,
+    limit,
   }
 }
