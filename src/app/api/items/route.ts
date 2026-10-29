@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server'
 import { Item } from '@/models/item'
+import { ItemService } from '@/services/item-service'
+import { parsePaginationParams } from '@/utils/pagination'
 
 const items: Item[] = []
 let nextId = 1
+const itemService = new ItemService()
 
-export async function GET() {
-  return NextResponse.json(items)
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const paginationOptions = parsePaginationParams(searchParams)
+  
+  const result = itemService.listItems(items, paginationOptions)
+  return NextResponse.json(result)
 }
 
 export async function POST(request: Request) {
