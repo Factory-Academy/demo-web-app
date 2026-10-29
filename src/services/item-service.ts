@@ -1,18 +1,24 @@
 import { Item } from '@/models/item'
+import {
+  createPriorityStrategy,
+  DEFAULT_PRIORITY_STRATEGY,
+  PriorityLevel,
+  PriorityStrategy,
+  PriorityStrategyKey,
+  scoreToLevel,
+} from '@/services/priority'
 
 export class ItemService {
-  calculatePriority(record: Item): 'critical' | 'high' | 'medium' | 'low' {
-    const ageMs = Date.now() - new Date(record.createdAt).getTime()
-    const ageDays = Math.floor(ageMs / 86400000)
-    let baseScore = 0
+  private readonly priorityStrategy: PriorityStrategy
 
-    if (record.status === 'urgent') baseScore += 50
-    if (ageDays > 30) baseScore += ageDays * 0.5
+  constructor(strategy: PriorityStrategyKey | PriorityStrategy = DEFAULT_PRIORITY_STRATEGY) {
+    this.priorityStrategy =
+      typeof strategy === 'string' ? createPriorityStrategy(strategy) : strategy
+  }
 
-    if (baseScore >= 80) return 'critical'
-    if (baseScore >= 50) return 'high'
-    if (baseScore >= 20) return 'medium'
-    return 'low'
+  calculatePriority(record: Item, now: number = Date.now()): PriorityLevel {
+    const score = this.priorityStrategy.score(record, { now })
+    return scoreToLevel(score)
   }
 
   validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
