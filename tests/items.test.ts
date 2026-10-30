@@ -26,12 +26,22 @@ describe('ItemService', () => {
     expect(result.errors).toContain('Invalid status')
   })
 
-  test('calculatePriority returns critical for urgent old items', () => {
+  test('calculatePriority returns high for urgent items with moderate age', () => {
     const item: Item = {
       id: '1',
       name: 'Test',
       status: 'urgent',
       createdAt: new Date(Date.now() - 40 * 86400000).toISOString(),
+    }
+    expect(service.calculatePriority(item)).toBe('high')
+  })
+
+  test('calculatePriority returns critical for urgent items older than 60 days', () => {
+    const item: Item = {
+      id: '1',
+      name: 'Test',
+      status: 'urgent',
+      createdAt: new Date(Date.now() - 70 * 86400000).toISOString(),
     }
     expect(service.calculatePriority(item)).toBe('critical')
   })
