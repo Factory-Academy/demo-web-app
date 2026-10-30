@@ -1,6 +1,9 @@
 import { Item } from '@/models/item'
+import { validateRequiredField, validateEnumField, collectValidationErrors } from '@/utils/validation'
 
 export class ItemService {
+  private static readonly VALID_STATUSES = ['active', 'pending', 'completed', 'urgent']
+
   calculatePriority(item: Item): 'critical' | 'high' | 'medium' | 'low' {
     const ageMs = Date.now() - new Date(item.createdAt).getTime()
     const ageDays = Math.floor(ageMs / 86400000)
@@ -16,12 +19,11 @@ export class ItemService {
   }
 
   validate(data: Partial<Item>): { valid: boolean; errors: string[] } {
-    const errors: string[] = []
-    if (!data.name?.trim()) errors.push('Name is required')
-    if (data.status !== undefined && data.status.trim() !== '' && 
-        !['active', 'pending', 'completed', 'urgent'].includes(data.status)) {
-      errors.push('Invalid status')
-    }
+    const validationResults = [
+      validateRequiredField(data.name, 'Name'),
+      validateEnumField(data.status, ItemService.VALID_STATUSES, 'status'),
+    ]
+    const errors = collectValidationErrors(validationResults)
     return { valid: errors.length === 0, errors }
   }
 }
