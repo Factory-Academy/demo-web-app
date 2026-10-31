@@ -67,14 +67,16 @@ export class ItemQueueService {
 
     this.isProcessing = true
 
-    while (this.operationQueue.length > 0) {
-      const operation = this.operationQueue.shift()
-      if (operation) {
-        await operation()
+    try {
+      while (this.operationQueue.length > 0) {
+        const operation = this.operationQueue.shift()
+        if (operation) {
+          await operation()
+        }
       }
+    } finally {
+      this.isProcessing = false
     }
-
-    this.isProcessing = false
   }
 
   /**

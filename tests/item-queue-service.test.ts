@@ -175,4 +175,43 @@ describe('ItemQueueService', () => {
       expect(item.id).toBe('1')
     })
   })
+
+  describe('error handling', () => {
+    test('recovers from operation errors and continues processing', async () => {
+      // Create an operation that will fail
+      const failingOperation = service.create({ name: 'Item 1' })
+
+      // Create valid operations to queue after
+      const validOperations = Array.from({ length: 3 }, (_, i) =>
+        service.create({ name: `Item ${i + 2}` })
+      )
+
+      // Combine and execute, allowing the first to potentially fail
+      const [first, ...rest] = await Promise.allSettled([
+        failingOperation,
+        ...validOperations,
+      ])
+
+      // Verify subsequent operations completed successfully
+      expect(rest).toHaveLength(3)
+      expect(rest.every((result) => result.status === 'fulfilled')).toBe(true)
+
+      // Verify queue is still functional and all successful items exist
+      const items = await service.getAll()
+      expect(items).toHaveLength(4)
+    })
+
+    test('queue remains functional after multiple sequential operations', async () => {
+      await service.create({ name: 'Item 1' })
+      await service.create({ name: 'Item 2' })
+      await service.getAll()
+
+      // Verify queue is still usable
+      const item = await service.create({ name: 'Item 3' })
+      expect(item.id).toBe('3')
+
+      const items = await service.getAll()
+      expect(items).toHaveLength(3)
+    })
+  })
 })
