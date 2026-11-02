@@ -1,4 +1,5 @@
 import { Item, ItemCreate } from '@/models/item'
+import { ITEM_CONFIG } from '@/config/item-config'
 
 type Operation<T> = () => Promise<T>
 
@@ -28,7 +29,7 @@ export class ItemQueueService {
     return this.enqueueOperation(async () => {
       const item: Item = {
         ...data,
-        status: data.status || 'pending',
+        status: data.status || ITEM_CONFIG.defaults.status,
         id: String(this.nextId++),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

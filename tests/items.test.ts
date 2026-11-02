@@ -1,5 +1,6 @@
 import { ItemService } from '../src/services/item-service'
 import { Item } from '../src/models/item'
+import { ITEM_CONFIG } from '../src/config/item-config'
 
 describe('ItemService', () => {
   const service = new ItemService()
@@ -20,6 +21,13 @@ describe('ItemService', () => {
     expect(result.valid).toBe(true)
   })
 
+  test('validate accepts every configured status', () => {
+    for (const status of ITEM_CONFIG.validation.allowedStatuses) {
+      const result = service.validate({ name: 'Test', status })
+      expect(result.valid).toBe(true)
+    }
+  })
+
   test('validate rejects invalid status', () => {
     const result = service.validate({ name: 'Test', status: 'invalid' })
     expect(result.valid).toBe(false)
@@ -31,7 +39,7 @@ describe('ItemService', () => {
       id: '1',
       name: 'Test',
       status: 'urgent',
-      createdAt: new Date(Date.now() - 40 * 86400000).toISOString(),
+      createdAt: new Date(Date.now() - 40 * ITEM_CONFIG.priority.millisecondsPerDay).toISOString(),
     }
     expect(service.calculatePriority(item)).toBe('high')
   })
@@ -41,7 +49,7 @@ describe('ItemService', () => {
       id: '1',
       name: 'Test',
       status: 'urgent',
-      createdAt: new Date(Date.now() - 70 * 86400000).toISOString(),
+      createdAt: new Date(Date.now() - 70 * ITEM_CONFIG.priority.millisecondsPerDay).toISOString(),
     }
     expect(service.calculatePriority(item)).toBe('critical')
   })
