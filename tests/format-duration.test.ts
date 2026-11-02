@@ -66,6 +66,18 @@ describe('formatDuration', () => {
       expect(formatDuration(-1000)).toBe('0s')
     })
 
+    test('handles NaN', () => {
+      expect(formatDuration(NaN)).toBe('0s')
+    })
+
+    test('handles Infinity', () => {
+      expect(formatDuration(Infinity)).toBe('0s')
+    })
+
+    test('handles negative Infinity', () => {
+      expect(formatDuration(-Infinity)).toBe('0s')
+    })
+
     test('handles very large values', () => {
       expect(formatDuration(999999999999)).toBe('11574d 1h')
     })

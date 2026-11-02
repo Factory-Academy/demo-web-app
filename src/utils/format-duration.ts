@@ -4,7 +4,7 @@
  * @returns A formatted string like "5s", "2m 30s", "1h 15m", etc.
  */
 export function formatDuration(ms: number): string {
-  if (ms < 0) {
+  if (!isFinite(ms) || ms < 0) {
     return '0s'
   }
 
