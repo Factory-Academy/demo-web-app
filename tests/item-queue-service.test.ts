@@ -1,5 +1,6 @@
 import { ItemQueueService } from '../src/services/item-queue-service'
 import { ItemCreate } from '../src/models/item'
+import { ITEM_CONFIG } from '../src/config/item-config'
 
 describe('ItemQueueService', () => {
   let service: ItemQueueService
@@ -28,6 +29,11 @@ describe('ItemQueueService', () => {
       expect(item1.id).toBe('1')
       expect(item2.id).toBe('2')
       expect(item3.id).toBe('3')
+    })
+
+    test('uses configured default status when status is not provided', async () => {
+      const item = await service.create({ name: 'Item without status' })
+      expect(item.status).toBe(ITEM_CONFIG.defaults.status)
     })
 
     test('prevents ID collision under concurrent operations', async () => {
